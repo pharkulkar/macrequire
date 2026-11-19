@@ -58,11 +58,15 @@ const storageLabel = (gb: number) => (gb >= 1024 ? `${gb / 1024}TB` : `${gb}GB`)
 // ------------------------------------------------------------------------ offers
 async function runOffers(rows: Row[], dryRun: boolean, skipInvalid: boolean, isAdmin: boolean) {
   const [configs, merchants] = await Promise.all([
-    prisma.productConfiguration.findMany({ select: { id: true, modelId: true, ramGB: true, storageGB: true, cpuCores: true, gpuCores: true, model: { select: { slug: true } }, chip: { select: { name: true } } } }),
+    prisma.productConfiguration.findMany({ select: { id: true, modelId: true, ramGB: true, storageGB: true, cpuCores: true, gpuCores: true, model: { select: { slug: true, name: true } }, chip: { select: { name: true } } } }),
     prisma.merchant.findMany(),
   ]);
   const byId = new Map(configs.map((c) => [c.id, c]));
   const natural = new Map(configs.map((c) => [`${c.model.slug}|${c.chip.name.toLowerCase()}|${c.cpuCores}|${c.gpuCores}|${c.ramGB}|${c.storageGB}`, c]));
+  // A configuration has a different id in every database (local, production), so ids are only a shortcut. A row is
+  // matched by its stable details: model slug (or model name), chip, cores, memory and storage. Those are the same
+  // everywhere, so one CSV works in every environment.
+  const byName = new Map(configs.map((c) => [`${c.model.name.toLowerCase()}|${c.chip.name.toLowerCase()}|${c.cpuCores}|${c.gpuCores}|${c.ramGB}|${c.storageGB}`, c]));
   const merchantBySlug = new Map(merchants.map((m) => [m.slug, m]));
   const results: RowResult[] = [];
   const plan: { index: number; action: 'create' | 'update'; configurationId: string; merchantId: string; existingId?: string; input: Record<string, unknown> }[] = [];
@@ -71,11 +75,13 @@ async function runOffers(rows: Row[], dryRun: boolean, skipInvalid: boolean, isA
   for (const [i, r] of rows.entries()) {
     const n = i + 1;
     const fail = (key: string, message: string) => results.push({ row: n, key, status: 'error', message });
-    const cfg = r.configurationId
-      ? byId.get(r.configurationId)
-      : natural.get(`${(r.modelSlug ?? '').toLowerCase()}|${(r.chip ?? '').toLowerCase()}|${r.cpuCores}|${r.gpuCores}|${r.ramGB}|${r.storageGB}`);
+    const spec = `${(r.chip ?? '').toLowerCase()}|${r.cpuCores}|${r.gpuCores}|${r.ramGB}|${r.storageGB}`;
+    const cfg =
+      (r.configurationId ? byId.get(r.configurationId) : undefined) ??
+      natural.get(`${(r.modelSlug ?? '').toLowerCase()}|${spec}`) ??
+      byName.get(`${(r.model ?? '').toLowerCase()}|${spec}`);
     const key = cfg ? `${r.merchantSlug} · ${cfg.model.slug} · ${cfg.chip.name} · ${cfg.ramGB}GB · ${storageLabel(cfg.storageGB)}` : `row ${n}`;
-    if (!cfg) { fail(key, 'Configuration not found (check configurationId, or modelSlug/chip/cpuCores/gpuCores/ramGB/storageGB)'); continue; }
+    if (!cfg) { fail(key, 'Configuration not found (check configurationId, or the model name or modelSlug with chip, cpuCores, gpuCores, ramGB and storageGB)'); continue; }
     const merchant = merchantBySlug.get(r.merchantSlug ?? '');
     if (!merchant) { fail(key, `Unknown merchantSlug "${r.merchantSlug ?? ''}"`); continue; }
     const dupKey = `${cfg.id}|${merchant.id}`;
@@ -266,12 +272,12 @@ async function offersTemplate(merchantSlug: string) {
   const configs = await prisma.productConfiguration.findMany({
     where: { isActive: true, model: { isActive: true } },
     orderBy: [{ model: { name: 'asc' } }, { chip: { name: 'asc' } }, { ramGB: 'asc' }, { storageGB: 'asc' }],
-    include: { model: { select: { name: true } }, chip: { select: { name: true } }, offers: { where: { merchantId: merchant.id, country: merchant.country } } },
+    include: { model: { select: { name: true, slug: true } }, chip: { select: { name: true } }, offers: { where: { merchantId: merchant.id, country: merchant.country } } },
   });
-  const header = ['configurationId', 'model', 'chip', 'cpuCores', 'gpuCores', 'ramGB', 'storageGB', 'merchantSlug', 'price', 'listPrice', 'stock', 'productId', 'regularUrl', 'affiliateUrl', 'source'];
+  const header = ['configurationId', 'modelSlug', 'model', 'chip', 'cpuCores', 'gpuCores', 'ramGB', 'storageGB', 'merchantSlug', 'price', 'listPrice', 'stock', 'productId', 'regularUrl', 'affiliateUrl', 'source'];
   const rows = configs.map((c) => {
     const o = c.offers[0];
-    return [c.id, c.model.name, c.chip.name, c.cpuCores, c.gpuCores, c.ramGB, c.storageGB, merchant.slug, o?.price ?? '', o?.listPrice ?? '', o?.stock ?? '', o?.productId ?? '', o?.regularUrl ?? '', o?.affiliateUrl ?? '', o?.source ?? ''];
+    return [c.id, c.model.slug, c.model.name, c.chip.name, c.cpuCores, c.gpuCores, c.ramGB, c.storageGB, merchant.slug, o?.price ?? '', o?.listPrice ?? '', o?.stock ?? '', o?.productId ?? '', o?.regularUrl ?? '', o?.affiliateUrl ?? '', o?.source ?? ''];
   });
   return toCsv(header, rows);
 }

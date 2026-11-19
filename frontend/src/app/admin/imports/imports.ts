@@ -31,7 +31,7 @@ interface ImportResult {
     <div class="panel">
       <h2>1. Get the template</h2>
       @if (kind() === 'offers') {
-        <p class="muted small">The template lists every active configuration for the merchant you pick, with its current price filled in. Enter or edit prices in a spreadsheet and keep the other columns as they are. Blank cells mean “leave as it is”. New offers need a <code>productId</code> (the ASIN for Amazon) or a <code>regularUrl</code>. Leave <code>affiliateUrl</code> empty: links are built from the merchant's affiliate ID (Merchants → Link settings). Prices are in the merchant's currency, before tax.</p>
+        <p class="muted small">The template lists every active configuration for the merchant you pick, with its current price filled in. Enter or edit prices in a spreadsheet and keep the other columns as they are. Products are matched by model, chip, cores, memory and storage, so the same file works on your computer and on the live site (the <code>configurationId</code> column is optional). Blank cells mean “leave as it is”. New offers need a <code>productId</code> (the ASIN for Amazon) or a <code>regularUrl</code>. Leave <code>affiliateUrl</code> empty: links are built from the merchant's affiliate ID (Merchants → Link settings). Prices are in the merchant's currency, before tax.</p>
         <div class="toolbar">
           <div class="field"><label for="im">Merchant</label>
             <select id="im" [(ngModel)]="merchant"><option value="">Choose…</option>@for (m of merchants(); track m.id) { <option [value]="m.slug">{{ m.name }} ({{ m.country }})</option> }</select></div>
