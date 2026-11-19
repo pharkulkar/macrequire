@@ -1,7 +1,9 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { TestSession } from '../../core/test-session';
 import { AdminApi } from '../core/admin-api.service';
+import { AdminAuthService } from '../core/admin-auth.service';
 import { errorLines } from '../core/admin-http';
 
 interface Count { count: number }
@@ -46,6 +48,56 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
       </div>
     </div>
 
+    <div class="panel" aria-labelledby="test-h">
+      <div class="spread">
+        <div>
+          <strong id="test-h">Test mode</strong>
+          <div class="muted small">While test mode is on in a browser, the recommendations and Buy clicks made there are saved as <strong>test data</strong>: they are left out of every number on this dashboard and can be deleted below. Real visitors are never affected. A test session lasts 12 hours.</div>
+        </div>
+        @if (test.active()) {
+          <button type="button" class="btn btn--secondary btn--sm" (click)="stopTest()">Stop test mode</button>
+        } @else {
+          <button type="button" class="btn btn--primary btn--sm" (click)="startTest()" [disabled]="testBusy()">Start test mode</button>
+        }
+      </div>
+      @if (test.active()) {
+        <p class="small"><strong>Test mode is on in this browser.</strong> Open the public site in this browser and use it as a visitor would.
+          @if (testLink(); as l) { To test on a phone, open this link there: <input class="testlink" type="text" readonly [value]="l" aria-label="Test link" (focus)="$any($event.target).select()" /> <button type="button" class="link" (click)="copyLink(l)">{{ copied() ? 'Copied' : 'Copy' }}</button> }
+        </p>
+      }
+      <p class="small">Test data saved so far: <strong>{{ testCounts()?.recommendations ?? 0 }}</strong> recommendations and <strong>{{ testCounts()?.clicks ?? 0 }}</strong> Buy clicks.
+        @if (auth.isAdmin()) {
+          <button type="button" class="link" (click)="deleteTestData()" [disabled]="testBusy() || ((testCounts()?.recommendations ?? 0) + (testCounts()?.clicks ?? 0)) === 0">Delete all test data</button>
+        }
+      </p>
+      @if (testMsg()) { <div class="alert alert--ok" role="status">{{ testMsg() }}</div> }
+    </div>
+
+    @if (auth.isAdmin()) {
+      <div class="panel panel--danger" aria-labelledby="clear-h">
+        <div class="spread">
+          <div>
+            <strong id="clear-h">Delete all dashboard data</strong>
+            <div class="muted small">Removes every saved recommendation and every recorded Buy click ({{ allCounts()?.recommendations ?? 0 }} and {{ allCounts()?.clicks ?? 0 }} right now), real and test, so the dashboard starts from zero. Prices, offers, the catalog and your settings are not touched.</div>
+          </div>
+          <button type="button" class="btn btn--danger btn--sm" (click)="openClear()" [disabled]="testBusy()">Delete all dashboard data…</button>
+        </div>
+      </div>
+    }
+
+    <dialog #clearDialog class="modal" aria-labelledby="clear-title" (close)="clearText = ''">
+      <form method="dialog" (submit)="$event.preventDefault(); confirmClear()">
+        <h2 id="clear-title">Delete all dashboard data?</h2>
+        <p>This permanently deletes <strong>{{ allCounts()?.recommendations ?? 0 }} recommendations</strong> and <strong>{{ allCounts()?.clicks ?? 0 }} Buy clicks</strong>, including real visitors' activity. It cannot be undone.</p>
+        <p class="small muted">Prices, offers, price history, the catalog and settings are kept.</p>
+        <label for="clear-confirm" class="small">Type <strong>DELETE</strong> to confirm</label>
+        <input id="clear-confirm" name="confirm" type="text" autocomplete="off" [value]="clearText" (input)="clearText = $any($event.target).value" />
+        <div class="modal__actions">
+          <button type="button" class="btn btn--secondary btn--sm" (click)="clearDialog.close()">Cancel</button>
+          <button type="submit" class="btn btn--danger btn--sm" [disabled]="clearText.trim() !== 'DELETE' || testBusy()">Delete everything</button>
+        </div>
+      </form>
+    </dialog>
     @if (error().length) { <div class="alert alert--error" role="alert">@for (l of error(); track l) { <div>{{ l }}</div> }</div> }
     @if (loading()) { <p class="muted" role="status">Loading…</p> }
 
@@ -135,11 +187,29 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
   styles: `
     .spark { display: flex; align-items: flex-end; gap: 3px; height: 90px; }
     .spark__bar { flex: 1; min-width: 4px; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 3px; opacity: 0.85; }
+    .panel--danger { border-color: #f1b8b4; }
+    .btn--danger { background: #b3261e; color: #fff; border-color: #b3261e; }
+    .btn--danger:disabled { opacity: 0.5; cursor: not-allowed; }
+    .modal { border: 0; border-radius: 16px; padding: 1.5rem; max-width: 460px; width: calc(100% - 2rem); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+    .modal::backdrop { background: rgba(0, 0, 0, 0.45); }
+    .modal h2 { margin: 0 0 0.5rem; font-size: 1.25rem; }
+    .modal input { width: 100%; margin-top: 0.35rem; padding: 0.55rem 0.7rem; font: inherit; border: 1px solid var(--border); border-radius: 8px; }
+    .modal__actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
+    .testlink { width: min(100%, 26rem); font: inherit; font-size: 0.8rem; padding: 0.2rem 0.4rem; margin: 0 0.4rem; }
     .funnel { padding-left: 1.1rem; display: grid; gap: 0.5rem; margin: 0 0 0.75rem; font-size: 0.92rem; }
   `,
 })
 export class AdminDashboard implements OnInit {
   private readonly api = inject(AdminApi);
+  protected readonly auth = inject(AdminAuthService);
+  protected readonly test = inject(TestSession);
+  protected readonly testCounts = signal<{ recommendations: number; clicks: number } | null>(null);
+  protected readonly testBusy = signal(false);
+  protected readonly testMsg = signal('');
+  protected readonly copied = signal(false);
+  protected readonly allCounts = signal<{ recommendations: number; clicks: number } | null>(null);
+  protected clearText = '';
+  private readonly clearDialog = viewChild<ElementRef<HTMLDialogElement>>('clearDialog');
   protected readonly days = signal(30);
   protected readonly loading = signal(true);
   protected readonly error = signal<string[]>([]);
@@ -149,6 +219,59 @@ export class AdminDashboard implements OnInit {
 
   ngOnInit() {
     this.load();
+    this.loadTestCounts();
+    this.test.refresh();
+  }
+  protected testLink() {
+    return this.test.active() ? this.test.link() : null;
+  }
+  protected openClear() {
+    this.clearText = '';
+    this.loadTestCounts();
+    this.clearDialog()?.nativeElement.showModal();
+  }
+  protected confirmClear() {
+    if (this.clearText.trim() !== 'DELETE') return;
+    this.testBusy.set(true);
+    this.api.post<{ deleted: { recommendations: number; clicks: number } }>('/dashboard-data/clear', { confirm: 'DELETE' }).subscribe({
+      next: (r) => {
+        this.testBusy.set(false);
+        this.clearDialog()?.nativeElement.close();
+        this.testMsg.set(`Deleted ${r.deleted.recommendations} recommendations and ${r.deleted.clicks} Buy clicks. The dashboard now starts from zero.`);
+        this.loadTestCounts();
+        this.load();
+      },
+      error: (e) => { this.testBusy.set(false); this.clearDialog()?.nativeElement.close(); this.error.set(errorLines(e)); },
+    });
+  }
+  private loadTestCounts() {
+    this.api.get<{ recommendations: number; clicks: number }>('/dashboard-data').subscribe({ next: (c) => this.allCounts.set(c), error: () => undefined });
+    this.api.get<{ recommendations: number; clicks: number }>('/test-data').subscribe({ next: (c) => this.testCounts.set(c), error: (e) => this.error.set(errorLines(e)) });
+  }
+  protected startTest() {
+    this.testBusy.set(true);
+    this.testMsg.set('');
+    this.api.post<{ token: string; expiresAt: string }>('/test-session', {}).subscribe({
+      next: (r) => { this.test.start(r.token, r.expiresAt); this.testBusy.set(false); this.testMsg.set('Test mode is on. Use the public site in this browser; everything you do is tagged as test.'); },
+      error: (e) => { this.testBusy.set(false); this.error.set(errorLines(e)); },
+    });
+  }
+  protected stopTest() {
+    this.test.stop();
+    this.loadTestCounts();
+    this.testMsg.set('Test mode is off. New activity is recorded as real again.');
+  }
+  protected copyLink(link: string) {
+    navigator.clipboard?.writeText(link).then(() => { this.copied.set(true); setTimeout(() => this.copied.set(false), 2000); }).catch(() => undefined);
+  }
+  protected deleteTestData() {
+    const c = this.testCounts();
+    if (!confirm(`Delete ${c?.recommendations ?? 0} test recommendations and ${c?.clicks ?? 0} test Buy clicks? Real data is not touched. This cannot be undone.`)) return;
+    this.testBusy.set(true);
+    this.api.delete<{ deleted: { recommendations: number; clicks: number } }>('/test-data').subscribe({
+      next: (r) => { this.testBusy.set(false); this.testMsg.set(`Deleted ${r.deleted.recommendations} test recommendations and ${r.deleted.clicks} test clicks.`); this.loadTestCounts(); this.load(); },
+      error: (e) => { this.testBusy.set(false); this.error.set(errorLines(e)); },
+    });
   }
 
   protected setDays(n: number) {

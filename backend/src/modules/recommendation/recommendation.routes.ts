@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+import { isTestRequest } from '../../lib/test-session';
 import { validate } from '../../middleware/validate';
 import { recommendationProfileSchema, RecommendationProfile } from './profile.schema';
 import { recommendationService } from './recommendation.service';
@@ -32,7 +33,7 @@ recommendationsRouter.post(
   '/',
   generateLimit,
   validate(recommendationProfileSchema),
-  h(async (req, res) => res.status(201).json(await recommendationService.create(req.body as RecommendationProfile))),
+  h(async (req, res) => res.status(201).json(await recommendationService.create(req.body as RecommendationProfile, { isTest: isTestRequest(req) }))),
 );
 
 // Declared before '/:id' so "compare" is not read as an id.

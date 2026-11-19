@@ -11,6 +11,7 @@ import { commerceRouter } from './commerce.routes';
 import { importsRouter } from './imports.admin';
 import { pricingAdminRouter } from './pricing.admin';
 import { settingsRouter } from './settings.routes';
+import { testDataRouter } from './test-data.routes';
 import { scoringAdminRouter } from './scoring.admin';
 import { usersRouter } from './users.routes';
 
@@ -27,6 +28,7 @@ adminRouter.use(applicationsAdminRouter);
 adminRouter.use(scoringAdminRouter);
 adminRouter.use(importsRouter);
 adminRouter.use(settingsRouter);
+adminRouter.use(testDataRouter);
 // Lets an administrator check that TRUST_PROXY_HOPS is right: "ip" must be your own public address.
 adminRouter.get('/diagnostics/network', requireRole('ADMIN'), (req, res) =>
   res.json({

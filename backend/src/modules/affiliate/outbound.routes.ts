@@ -2,11 +2,12 @@ import { NextFunction, Request, Response, Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { env } from '../../config/env';
+import { isTestRequest } from '../../lib/test-session';
 import { validate } from '../../middleware/validate';
 import { outboundService } from './outbound.service';
 
 const params = z.object({ offerId: z.string().trim().min(1).max(60) });
-const query = z.object({ source: z.string().trim().max(30).optional(), result: z.string().trim().max(60).optional() });
+const query = z.object({ source: z.string().trim().max(30).optional(), result: z.string().trim().max(60).optional(), test: z.string().max(600).optional() });
 
 const outboundLimit = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true, legacyHeaders: false });
 
@@ -25,6 +26,7 @@ outboundRouter.get('/:offerId', outboundLimit, validate(params, 'params'), valid
       userAgent: req.get('user-agent') ?? undefined,
       ip: req.ip,
       method: req.method,
+      isTest: isTestRequest(req),
     })
     .then((result) => {
       res.set({

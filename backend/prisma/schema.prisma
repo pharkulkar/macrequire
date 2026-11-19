@@ -252,7 +252,7 @@ model RecommendationProfile {
   intensity            WorkloadIntensity
   futureNeeds          Json
   preferences          Json
-  isTest               Boolean           @default(false) // admin previews
+  isTest               Boolean           @default(false) // admin previews and test sessions
   // Engine output that is not per-configuration: workload model, warnings, ranking comparisons.
   summary              Json?
   engineVersion        String?
@@ -400,6 +400,8 @@ model AffiliateClickEvent {
   resultId        String?
   userAgent       String?
   ipHash          String? // salted hash only, never raw IP
+  /** Recorded during an administrator's test session. Kept out of analytics and removable in the admin. */
+  isTest          Boolean  @default(false)
   createdAt       DateTime @default(now())
 
   offer  MerchantOffer         @relation(fields: [offerId], references: [id])
@@ -410,6 +412,7 @@ model AffiliateClickEvent {
   @@index([merchantId, createdAt])
   @@index([country, createdAt])
   @@index([ipHash, offerId, createdAt])
+  @@index([isTest])
 }
 
 // ----------------------------------------------------------------- Admin

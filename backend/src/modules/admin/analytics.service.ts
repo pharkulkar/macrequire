@@ -28,7 +28,7 @@ export const analyticsService = {
     const toExclusive = new Date(to.getTime() + DAY); // include the whole "to" day
     const from = q.from ? new Date(`${q.from}T00:00:00Z`) : new Date(to.getTime() - 29 * DAY);
 
-    const conds = [Prisma.sql`c."createdAt" >= ${from}`, Prisma.sql`c."createdAt" < ${toExclusive}`];
+    const conds = [Prisma.sql`c."isTest" = false`, Prisma.sql`c."createdAt" >= ${from}`, Prisma.sql`c."createdAt" < ${toExclusive}`];
     if (q.country) conds.push(Prisma.sql`c."country" = ${q.country}`);
     if (q.merchantId) conds.push(Prisma.sql`c."merchantId" = ${q.merchantId}`);
     const where = Prisma.join(conds, ' AND ');

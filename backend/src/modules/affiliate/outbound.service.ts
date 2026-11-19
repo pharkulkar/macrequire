@@ -19,6 +19,8 @@ export interface ClickContext {
   userAgent?: string;
   ip?: string;
   method: string;
+  /** Click made during an administrator's test session. */
+  isTest?: boolean;
 }
 
 export type OutboundResult =
@@ -99,6 +101,7 @@ export const outboundService = {
         resultId,
         userAgent: ctx.userAgent?.slice(0, 300) ?? null,
         ipHash,
+        isTest: ctx.isTest ?? false,
       },
     });
     return true;
