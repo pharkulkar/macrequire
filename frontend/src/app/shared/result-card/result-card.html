@@ -1,0 +1,167 @@
+<article class="card result" [attr.aria-labelledby]="'res-' + result().configurationId">
+  <header class="head">
+    <div class="head__main">
+      <div class="badges">
+        <span class="rank" [attr.aria-label]="'Rank ' + result().rank">#{{ result().rank }}</span>
+        @for (l of result().labels; track l) {
+          <span class="badge" [class.badge--stretch]="l === 'STRETCH'">{{ labelText[l] }}</span>
+        }
+      </div>
+      @if (config(); as c) {
+        <p class="eyebrow">{{ c.model.category }} · {{ c.model.generation }} · {{ c.model.releaseYear }}</p>
+        <h3 [id]="'res-' + result().configurationId">{{ c.model.name }}</h3>
+      } @else {
+        <h3 [id]="'res-' + result().configurationId">{{ result().label }}</h3>
+      }
+    </div>
+
+    <div class="score" role="img" [attr.aria-label]="'Overall suitability score ' + result().finalScore + ' out of 100, ' + tier().name">
+      <div class="score__ring">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="ring-bg" cx="50" cy="50" r="44" />
+          <circle [class]="'ring ring--' + tier().cls" cx="50" cy="50" r="44" [attr.stroke-dasharray]="ringLength" [attr.stroke-dashoffset]="ringOffset()" transform="rotate(-90 50 50)" />
+        </svg>
+        <span class="score__num" aria-hidden="true">{{ result().finalScore | number: '1.0-0' }}</span>
+      </div>
+      <span class="score__tier" aria-hidden="true">{{ tier().name }}</span>
+    </div>
+  </header>
+
+  <div class="body">
+    <div class="product">
+      <app-model-image [src]="config()?.model?.imageUrl" [alt]="(config()?.model?.name ?? result().label) + ' product photo'" [fallback]="(config()?.model?.screenSizeInch ?? '') + '&quot;'" />
+    </div>
+
+    <div class="info">
+      @if (config(); as c) {
+        <dl class="config">
+          <div><dt>Chip</dt><dd>{{ c.chip.name }}</dd></div>
+          <div><dt>CPU / GPU</dt><dd>{{ c.chip.cpuCores }}-core / {{ c.chip.gpuCores }}-core</dd></div>
+          <div><dt>Memory</dt><dd>{{ c.memoryGB }}GB unified</dd></div>
+          <div><dt>Storage</dt><dd>{{ c.storageLabel }} SSD</dd></div>
+        </dl>
+      }
+
+      <div class="price">
+        @if (result().price.known && result().price.amount !== null) {
+          <p class="price__amount">
+            {{ money(result().price.amount!, result().price.currency ?? currency()) }}
+            @if (isSamplePrice()) { <span class="tag tag--sample">Sample price (development data)</span> }
+          </p>
+          <p class="price__meta">
+            at {{ result().price.merchant }}
+            @if (stretch() && result().extraCost !== null) {
+              · <strong class="over">{{ money(result().extraCost!, result().price.currency ?? currency()) }} over your maximum</strong>
+            } @else if (result().budgetStatus === 'WITHIN') { · within your budget }
+          </p>
+          @if (historyNote(); as n) { <p class="price__history" [class.price__history--good]="n.kind !== 'above-low'">{{ n.text }}</p> }
+        } @else {
+          <p class="price__amount price__amount--none">Price not verified yet</p>
+          <p class="price__meta">Check the merchant for the current price.</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <section class="why" [attr.aria-label]="'Why we recommend this'">
+    <h4>Why we recommend it</h4>
+    <p class="summary">{{ result().explanation }}</p>
+    @if (result().reasons.length) {
+      <ul class="list list--good">
+        @for (r of result().reasons; track r) { <li>{{ r }}</li> }
+      </ul>
+    }
+  </section>
+
+  @if (result().limitations.length) {
+    <section class="limits" aria-label="Limitations">
+      <h4>Things to know</h4>
+      <ul class="list list--warn">
+        @for (l of result().limitations; track l) { <li>{{ l }}</li> }
+      </ul>
+    </section>
+  }
+
+  <section class="future" aria-label="Future-proofing">
+    <h4>Future-proofing</h4>
+    <p>{{ result().futureAssessment }}</p>
+  </section>
+
+  @if (result().variants.length) {
+    <section class="variants" aria-label="Other sizes of this configuration">
+      <h4>Same hardware, other sizes</h4>
+      <ul>
+        @for (v of result().variants; track v.configurationId) {
+          <li>
+            {{ v.ramGB }}GB · {{ storage(v.storageGB) }}
+            <span class="muted">score {{ v.finalScore | number: '1.0-0' }}@if (v.price !== null && v.currency) { · {{ money(v.price, v.currency) }} }</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <div class="actions">
+    @if (config(); as c) {
+      <a class="btn btn--secondary btn--sm" [routerLink]="['/catalog', c.model.slug]">View full specifications</a>
+    }
+    <button type="button" class="btn btn--secondary btn--sm" [class.btn--on]="inCompare()" [attr.aria-pressed]="inCompare()" (click)="toggleCompare()">
+      {{ inCompare() ? '✓ In comparison' : 'Compare' }}
+    </button>
+    @if (buyHref(); as href) {
+      <a class="btn btn--primary btn--sm" [href]="href" target="_blank" rel="sponsored noopener noreferrer">Buy from {{ offer()?.merchant?.name }}</a>
+    } @else {
+      <button type="button" class="btn btn--sm btn--disabled" disabled aria-describedby="nobuy">Buy unavailable</button>
+    }
+  </div>
+  @if (compareFullHint()) { <p class="hint-err" role="alert">You can compare up to 4 configurations. Remove one to add another.</p> }
+  <p class="buy-note" id="nobuy">
+    @if (buyHref()) {
+      @if (offer()?.hasAffiliateLink) { Affiliate link: we may earn a commission at no extra cost to you. } @else { Merchant link. }
+      Price and stock are reported by the merchant and may change.
+    } @else {
+      No merchant offer is listed for this configuration in your country yet.
+    }
+  </p>
+
+  <button type="button" class="expand" [attr.aria-expanded]="expanded()" [attr.aria-controls]="'bd-' + result().configurationId" (click)="expanded.set(!expanded())">
+    {{ expanded() ? 'Hide' : 'Show' }} how this score is calculated
+  </button>
+
+  @if (expanded()) {
+    <section class="breakdown" [id]="'bd-' + result().configurationId" aria-label="Score breakdown">
+      <p class="breakdown__intro">
+        Each category is scored 0 to 100, weighted, and averaged. Categories that do not apply to you are left out. These are MacRequire
+        estimates, not benchmarks.
+      </p>
+      <ul class="cats">
+        @for (c of result().categories; track c.key) {
+          <li [class.cats__off]="!c.applicable">
+            <div class="cats__row">
+              <span class="cats__name">{{ categoryLabels[c.key] }}</span>
+              @if (c.applicable) {
+                <span class="cats__score">{{ c.score | number: '1.0-0' }}<span class="muted"> / 100</span></span>
+              } @else { <span class="muted">Not counted</span> }
+            </div>
+            @if (c.applicable) {
+              <div class="bar" role="img" [attr.aria-label]="categoryLabels[c.key] + ' ' + (c.score | number: '1.0-0') + ' out of 100'">
+                <span [class]="'bar__fill bar__fill--' + barClass(c.score)" [style.width.%]="c.score"></span>
+              </div>
+              <p class="cats__meta">
+                Weight {{ pct(c.weight) }}% · adds {{ c.contribution | number: '1.1-1' }} points
+                @if (c.estimated) { · <span class="tag">estimated: data missing</span> }
+              </p>
+            }
+            <p class="cats__note">{{ c.note }}</p>
+          </li>
+        }
+      </ul>
+      @if (result().penalties.length) {
+        <h4>Adjustments applied</h4>
+        <ul class="list list--warn">
+          @for (p of result().penalties; track p.code) { <li>{{ p.description }} <span class="muted">({{ p.effect }})</span></li> }
+        </ul>
+      }
+    </section>
+  }
+</article>

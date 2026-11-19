@@ -1,0 +1,450 @@
+// MacRequire database schema.
+// Principles: product specs, prices/offers, applications, scoring rules and
+// recommendation output are kept in separate tables so they evolve independently.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DataSource {
+  OFFICIAL_APPLE
+  MERCHANT_FEED
+  ADMIN_VERIFIED
+  SAMPLE // development-only placeholder data, must be labelled in UI
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  LIMITED
+  UNKNOWN
+}
+
+enum WorkloadIntensity {
+  BASIC
+  MODERATE
+  HEAVY
+  PROFESSIONAL
+}
+
+enum AdminRole {
+  ADMIN
+  EDITOR
+}
+
+// ---------------------------------------------------------------- Catalog
+
+model ChipSpecification {
+  id                 String     @id @default(cuid())
+  name               String     @unique // e.g. "M4 Pro"
+  family             String // "M1" | "M2" | "M3" | "M4" ...
+  tier               String // BASE | PRO | MAX | ULTRA
+  cpuCores           Int
+  superCores         Int? // Apple "super cores" (M5 generation onward)
+  performanceCores   Int?
+  efficiencyCores    Int?
+  gpuCores           Int
+  neuralEngineCores  Int?
+  neuralEngineNote   String?
+  memoryBandwidthGBs Int?
+  maxMemoryGB        Int?
+  // Relative, admin-editable benchmark indices (0-100) used by the scoring engine.
+  perfIndexBasis     String? // how cpuPerfIndex/gpuPerfIndex were derived (estimates, not benchmarks)
+  cpuPerfIndex       Float
+  gpuPerfIndex       Float
+  source             DataSource @default(SAMPLE)
+  sourceUrl          String?
+  verifiedAt         DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  configurations ProductConfiguration[]
+
+  @@index([family, tier])
+}
+
+model ProductModel {
+  id              String     @id @default(cuid())
+  slug            String     @unique
+  name            String // "MacBook Air 13-inch (M4, 2025)"
+  category        String // "MacBook Air" | "MacBook Pro"
+  productFamily   String     @default("MacBook") // extensible to other product categories
+  generation      String // "M4"
+  releaseYear     Int
+  modelIdentifier String? // e.g. "Mac16,12"
+  screenSizeInch  Float
+  imageUrl        String?
+  officialSpecUrl String?
+  source          DataSource @default(SAMPLE)
+  verifiedAt      DateTime?
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  configurations ProductConfiguration[]
+
+  @@index([category, releaseYear])
+  @@index([isActive])
+}
+
+model ProductConfiguration {
+  id           String     @id @default(cuid())
+  modelId      String
+  chipId       String
+  sku          String? // Official part number where available
+  ramGB        Int
+  storageGB    Int
+  cpuCores     Int // configuration-level (some chips ship in binned variants)
+  gpuCores     Int
+  colors       String[]
+  // How this combination was verified:
+  //  STORE_CONFIRMED     - an Apple store page exists for this exact combination
+  //  CTO_DERIVED         - derived from Apple's documented configure-to-order options;
+  //                        the exact combination is not individually confirmed
+  //  ADMIN_VERIFIED      - confirmed manually by an administrator
+  verification String     @default("CTO_DERIVED")
+  isActive     Boolean    @default(true)
+  source       DataSource @default(SAMPLE)
+  verifiedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  model           ProductModel                   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  chip            ChipSpecification              @relation(fields: [chipId], references: [id])
+  specification   ConfigurationSpecification?
+  offers          MerchantOffer[]
+  priceHistory    PriceHistory[]
+  scoreBreakdowns RecommendationScoreBreakdown[]
+  results         RecommendationResult[]
+
+  // A model cannot list the same hardware combination twice.
+  @@unique([modelId, chipId, cpuCores, gpuCores, ramGB, storageGB])
+  @@unique([sku])
+  @@index([ramGB, storageGB])
+}
+
+model ConfigurationSpecification {
+  id                String     @id @default(cuid())
+  configurationId   String     @unique
+  displayTech       String? // "Liquid Retina" etc.
+  displayResolution String?
+  refreshRateHz     Int?
+  brightnessNits    Int?
+  batteryWh         Float?
+  batteryLifeHours  Float? // Apple-claimed video playback hours
+  weightKg          Float?
+  ports             String[]
+  wireless          String?
+  camera            String?
+  audio             String?
+  externalDisplays  String?
+  extra             Json?
+  source            DataSource @default(SAMPLE)
+  sourceUrl         String?
+  verifiedAt        DateTime?
+  updatedAt         DateTime   @updatedAt
+
+  configuration ProductConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------------- Applications
+
+model Application {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  category     String
+  macSupported Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  notes        String?
+  aliases      String[] // alternative search terms
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  requirements ApplicationRequirement?
+
+  @@index([category])
+  @@index([name])
+}
+
+model ApplicationRequirement {
+  id                String            @id @default(cuid())
+  applicationId     String            @unique
+  minRamGB          Int
+  preferredRamGB    Int
+  cpuDemand         Int // 1-10
+  gpuDemand         Int // 1-10
+  storageGB         Int // typical footprint incl. working data
+  intensity         WorkloadIntensity @default(MODERATE)
+  // Fraction (0-1) of the app's RAM that is realistically active alongside others.
+  concurrencyFactor Float             @default(0.6)
+  needsAppleSilicon Boolean           @default(false)
+  extra             Json? // application-specific requirements
+  // Provenance. VENDOR_PUBLISHED = RAM figures taken from the vendor's own page (see sourceUrl);
+  // ESTIMATE = MacRequire estimate. Demand scores (cpu/gpu/storage/concurrency) are always estimates.
+  basis             String            @default("ESTIMATE")
+  basisNote         String?
+  sourceUrl         String?
+  verifiedAt        DateTime?
+  updatedAt         DateTime          @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model UseCase {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String?
+  appCategories String[] // application categories to suggest in the questionnaire
+  starterApps   String[] @default([]) // application slugs preselected when a visitor starts from this use case
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+
+  weights UseCaseWeight[]
+}
+
+model UseCaseWeight {
+  id         String @id @default(cuid())
+  useCaseId  String
+  category   String // scoring category key e.g. "ram", "gpu"
+  multiplier Float  @default(1.0)
+
+  useCase UseCase @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([useCaseId, category])
+}
+
+// ---------------------------------------------------------- Scoring config
+
+model ScoringRuleSet {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(false)
+  // weights, RAM penalties, budget rules, future-proofing params
+  weights   Json
+  rules     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profiles RecommendationProfile[]
+
+  @@index([isActive])
+}
+
+// --------------------------------------------------------- Recommendations
+
+model RecommendationProfile {
+  id                   String            @id @default(uuid()) // random, since the id alone grants access to the answers
+  ruleSetId            String?
+  country              String // "IN" | "US"
+  currency             String
+  minBudget            Int?
+  maxBudget            Int
+  useCases             String[]
+  applicationIds       String[]
+  futureApplicationIds String[]
+  intensity            WorkloadIntensity
+  futureNeeds          Json
+  preferences          Json
+  isTest               Boolean           @default(false) // admin previews
+  // Engine output that is not per-configuration: workload model, warnings, ranking comparisons.
+  summary              Json?
+  engineVersion        String?
+  createdAt            DateTime          @default(now())
+
+  ruleSet ScoringRuleSet?        @relation(fields: [ruleSetId], references: [id])
+  results RecommendationResult[]
+
+  @@index([createdAt])
+  @@index([country])
+}
+
+model RecommendationResult {
+  id              String   @id @default(uuid())
+  profileId       String
+  configurationId String
+  rank            Int
+  finalScore      Float
+  section         String? // BEST_OVERALL | BEST_VALUE | ... | STRETCH
+  priceAtTime     Float?
+  currency        String?
+  explanation     Json
+  createdAt       DateTime @default(now())
+
+  profile       RecommendationProfile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  configuration ProductConfiguration           @relation(fields: [configurationId], references: [id])
+  breakdown     RecommendationScoreBreakdown[]
+  clicks        AffiliateClickEvent[]
+
+  @@unique([profileId, configurationId])
+  @@index([configurationId])
+}
+
+model RecommendationScoreBreakdown {
+  id              String @id @default(cuid())
+  resultId        String
+  configurationId String
+  category        String // cpu | gpu | ram | storage | compatibility | budget | portability | battery | future
+  score           Float // 0-100
+  weight          Float
+  weighted        Float
+  detail          Json?
+
+  result        RecommendationResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  configuration ProductConfiguration @relation(fields: [configurationId], references: [id])
+
+  @@unique([resultId, category])
+}
+
+// ------------------------------------------------------------- Commerce
+
+model Merchant {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  country    String // "IN" | "US"
+  websiteUrl String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  // How links to this merchant are built from a product ID (ASIN, SKU) and an affiliate ID. See modules/affiliate/links.ts.
+  productUrlTemplate  String? // e.g. https://www.amazon.com/dp/{id}
+  affiliateIdParam    String? // query parameter that carries the affiliate ID, e.g. tag
+  affiliateId         String? // the ID itself, e.g. macrequire-20
+  affiliateLinkTemplate String? // for networks that wrap the link, e.g. https://x.example/c/123?u={url}
+
+  programs AffiliateProgram[]
+  offers   MerchantOffer[]
+
+  @@index([country])
+}
+
+model AffiliateProgram {
+  id          String  @id @default(cuid())
+  merchantId  String
+  name        String
+  network     String? // e.g. "Amazon Associates"
+  country     String
+  affiliateId String? // tag / partner id (kept out of source code)
+  isActive    Boolean @default(true)
+
+  merchant Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  offers   MerchantOffer[]
+
+  @@unique([merchantId, country, name])
+}
+
+model MerchantOffer {
+  id              String      @id @default(cuid())
+  configurationId String
+  merchantId      String
+  programId       String?
+  country         String
+  currency        String
+  price           Float? // in the currency's main unit, up to 2 decimals (899.99)
+  listPrice       Float?
+  stock           StockStatus @default(UNKNOWN)
+  productId       String? // merchant's own ID: ASIN for Amazon, SKU for Best Buy
+  regularUrl      String
+  affiliateUrl    String? // optional manual override, stored verbatim; never rewritten
+  source          DataSource  @default(SAMPLE)
+  priceVerifiedAt DateTime?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  configuration ProductConfiguration  @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  merchant      Merchant              @relation(fields: [merchantId], references: [id])
+  program       AffiliateProgram?     @relation(fields: [programId], references: [id])
+  priceHistory  PriceHistory[]
+  clicks        AffiliateClickEvent[]
+
+  @@unique([configurationId, merchantId, country])
+  @@index([country, isActive])
+  @@index([priceVerifiedAt])
+}
+
+model PriceHistory {
+  id              String      @id @default(cuid())
+  offerId         String
+  configurationId String
+  price           Float?
+  listPrice       Float?
+  currency        String
+  stock           StockStatus @default(UNKNOWN)
+  recordedAt      DateTime    @default(now())
+
+  offer         MerchantOffer        @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  configuration ProductConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, recordedAt])
+  @@index([configurationId, recordedAt])
+}
+
+model AffiliateClickEvent {
+  id              String   @id @default(cuid())
+  offerId         String
+  configurationId String
+  productModelId  String
+  merchantId      String
+  country         String
+  referralSource  String? // e.g. "recommendation", "catalog", "compare"
+  // AFFILIATE when the stored affiliate URL was used, REGULAR when only the plain merchant URL existed.
+  linkType        String   @default("REGULAR")
+  resultId        String?
+  userAgent       String?
+  ipHash          String? // salted hash only, never raw IP
+  createdAt       DateTime @default(now())
+
+  offer  MerchantOffer         @relation(fields: [offerId], references: [id])
+  result RecommendationResult? @relation(fields: [resultId], references: [id])
+
+  @@index([createdAt])
+  @@index([configurationId])
+  @@index([merchantId, createdAt])
+  @@index([country, createdAt])
+  @@index([ipHash, offerId, createdAt])
+}
+
+// ----------------------------------------------------------------- Admin
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  /** Bumped when the password changes or the account is deactivated, which ends every existing session. */
+  tokenVersion Int       @default(0)
+  role         AdminRole @default(ADMIN)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
+
+// Every successful change made through the admin API. No foreign key on purpose, so the trail
+// survives if an admin account is later removed.
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String?
+  adminEmail String
+  method     String
+  path       String
+  status     Int
+  summary    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([adminId])
+}
+
+/// Site-wide switches edited in the admin (key/value). Defaults live in code (lib/site-settings.ts).
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

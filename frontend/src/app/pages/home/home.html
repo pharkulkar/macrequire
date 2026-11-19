@@ -1,0 +1,86 @@
+<section class="hero">
+  <div class="container hero__inner">
+    <h1>Find the MacBook That Actually Fits Your Needs.</h1>
+    <p class="hero__sub">
+      MacRequire evaluates every MacBook configuration against your applications, workload, budget and future plans,
+      then explains exactly why each one ranks where it does.
+    </p>
+    <div class="hero__actions">
+      <a routerLink="/find" class="btn btn--primary">Find My MacBook</a>
+      <a routerLink="/catalog" class="btn btn--secondary">Explore MacBooks</a>
+    </div>
+  </div>
+</section>
+
+<section class="section section--soft" aria-labelledby="how-title">
+  <div class="container">
+    <h2 id="how-title" class="section-title">How it works</h2>
+    <p class="section-lead">Three steps from "what should I buy?" to a ranked, explained shortlist.</p>
+    <ol class="steps">
+      @for (step of steps; track step.title; let i = $index) {
+        <li class="card step">
+          <span class="step__num" aria-hidden="true">{{ i + 1 }}</span>
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.body }}</p>
+        </li>
+      }
+    </ol>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="uc-title">
+  <div class="container">
+    <h2 id="uc-title" class="section-title">Popular use cases</h2>
+    <p class="section-lead">Whatever you do on a Mac, start from the work itself.</p>
+    <ul class="tiles">
+      @for (uc of useCases; track uc.name) {
+        <li>
+          <a class="card tile" routerLink="/find" [queryParams]="{ useCase: uc.name }">
+            <h3>{{ uc.name }}</h3>
+            <p>{{ uc.blurb }}</p>
+          </a>
+        </li>
+      }
+    </ul>
+  </div>
+</section>
+
+<section class="section section--soft" aria-labelledby="feat-title">
+  <div class="container">
+    <h2 id="feat-title" class="section-title">Featured MacBooks</h2>
+    <p class="section-lead">
+      Browse the lineup by family. Verified configurations and live merchant pricing appear in the catalog.
+    </p>
+    <div class="families">
+      @for (f of families; track f.name) {
+        <a class="card family" routerLink="/catalog" [queryParams]="{ category: f.name }">
+          <h3>{{ f.name }}</h3>
+          <p>{{ f.blurb }}</p>
+          <span class="family__link">View configurations →</span>
+        </a>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="why-title">
+  <div class="container">
+    <h2 id="why-title" class="section-title">Why MacRequire</h2>
+    <p class="section-lead">Built to recommend what fits, not what is newest or most expensive.</p>
+    <div class="reasons">
+      @for (r of reasons; track r.title) {
+        <div class="reason">
+          <h3>{{ r.title }}</h3>
+          <p>{{ r.body }}</p>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section section--soft" aria-labelledby="faq-title">
+  <div class="container">
+    <h2 id="faq-title" class="section-title">Frequently asked questions</h2>
+    <app-faq [items]="faq" />
+  </div>
+</section>

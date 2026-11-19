@@ -1,0 +1,126 @@
+<section class="container page">
+  @if (loading()) {
+    <div class="state" role="status" aria-live="polite">
+      <div class="skeleton skeleton--title"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <p>Scoring every MacBook configuration against your answers…</p>
+    </div>
+  } @else if (error(); as e) {
+    <div class="state state--error" role="alert">
+      <h1>Something went wrong</h1>
+      <p>{{ e.message }}</p>
+      <div class="state__actions">
+        @if (e.retry) { <button type="button" class="btn btn--primary" (click)="retry()">Try again</button> }
+        <a routerLink="/find" class="btn btn--secondary">Answer the questions again</a>
+      </div>
+    </div>
+  } @else if (rec(); as r) {
+    <header class="head">
+      <h1>Your Best MacBook Matches</h1>
+      <p class="lead">{{ summaryLine() }}. Ranked by how well each exact configuration fits what you told us.</p>
+      <p class="head__links"><a routerLink="/find">Change my answers</a> · <button type="button" class="linklike" (click)="startOver()">Start over</button></p>
+    </header>
+
+    @for (w of r.warnings; track w.code) {
+      <p class="banner" role="status"><strong>Note:</strong> {{ w.message }}</p>
+    }
+
+    @if (r.workload; as w) {
+      <details class="card needs">
+        <summary>What we estimated you need</summary>
+        <div class="needs__grid">
+          <div><span class="needs__num">~{{ w.ram.targetGB }}GB</span><span class="needs__lbl">memory for comfortable use</span></div>
+          <div><span class="needs__num">~{{ w.ram.minimumGB }}GB</span><span class="needs__lbl">memory just to run</span></div>
+          <div><span class="needs__num">~{{ w.ram.futureGB }}GB</span><span class="needs__lbl">memory over {{ w.ownershipYears }} years</span></div>
+          <div><span class="needs__num">~{{ storage(w.storage.needGB) }}</span><span class="needs__lbl">storage for apps and files</span></div>
+        </div>
+        @if (w.ram.drivers.length) {
+          <p class="needs__sub">Biggest memory users in your workload (the apps are combined, not simply added up):</p>
+          <ul class="needs__drivers">
+            @for (d of w.ram.drivers.slice(0, 5); track d.name) { <li>{{ d.name }} <span class="muted">~{{ d.ramGB }}GB</span></li> }
+          </ul>
+        }
+        @for (n of w.notes; track n) { <p class="needs__note">{{ n }}</p> }
+        <p class="needs__note">These are MacRequire estimates built from configurable assumptions, not measurements.</p>
+      </details>
+    }
+
+    @if (r.matches.length === 0) {
+      <div class="state">
+        <h2>No configuration fits within your budget</h2>
+        <p>Try a higher maximum budget, or loosen a preference, and we will look again.</p>
+        <a routerLink="/find" class="btn btn--primary">Change my answers</a>
+      </div>
+    } @else {
+      @if (highlights().length) {
+        <nav class="highlights" aria-label="Highlights">
+          <ul>
+            @for (h of highlights(); track h.label) {
+              <li>
+                <a [href]="'#rank-' + h.result.rank" (click)="scrollTo(h.result, $event)">
+                  <span class="highlights__label">{{ labelText[h.label] }}</span>
+                  <span class="highlights__name">{{ h.result.configuration?.model?.name ?? h.result.label }}</span>
+                  <span class="highlights__cfg">{{ h.result.configuration?.chip?.name }} · {{ h.result.configuration?.memoryGB }}GB · {{ h.result.configuration?.storageLabel }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </nav>
+      }
+
+      <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Ranked recommendations">
+        <div class="carousel__bar">
+          <p class="carousel__count" aria-live="polite">Match {{ active() + 1 }} of {{ r.matches.length }}. Swipe or scroll sideways to compare.</p>
+          @if (r.matches.length > 1) {
+            <div class="carousel__nav">
+              <button type="button" class="carousel__btn" aria-label="Previous match" [disabled]="active() === 0" (click)="step(track, -1)">←</button>
+              <button type="button" class="carousel__btn" aria-label="Next match" [disabled]="active() >= r.matches.length - 1" (click)="step(track, 1)">→</button>
+            </div>
+          }
+        </div>
+        <ol #track class="cards cards--row" aria-label="Ranked recommendations" tabindex="0" (scroll)="onScroll(track)">
+          @for (m of r.matches; track m.configurationId) {
+            <li [id]="'rank-' + m.rank" tabindex="-1" role="group" aria-roledescription="slide" [attr.aria-label]="'Match ' + m.rank + ' of ' + r.matches.length">
+              <app-result-card [result]="m" [country]="r.profile.budget.country" [currency]="r.profile.budget.currency" />
+            </li>
+          }
+        </ol>
+      </div>
+
+      @if (r.comparisons.length) {
+        <details class="card why-rank">
+          <summary>Why these rank where they do</summary>
+          <ol>
+            @for (c of r.comparisons; track c.higherId) { <li>{{ c.summary }}</li> }
+          </ol>
+        </details>
+      }
+    }
+
+    @if (r.stretch.length) {
+      <section class="stretch" aria-labelledby="stretch-h">
+        <h2 id="stretch-h">Worth Stretching Your Budget?</h2>
+        <p class="lead">
+          These cost more than your maximum, but score clearly higher than the best option inside your budget. The extra cost is shown on
+          each card.
+        </p>
+        <ul class="cards cards--row" aria-label="Stretch options" tabindex="0">
+          @for (m of r.stretch; track m.configurationId) {
+            <li>
+              <app-result-card [result]="m" [stretch]="true" [country]="r.profile.budget.country" [currency]="r.profile.budget.currency" />
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <aside class="notice" aria-label="About these scores">
+      <p>{{ r.notice }}</p>
+      <p>
+        MacRequire earns a commission from some purchase links, which never affects a score. See the
+        <a routerLink="/affiliate-disclosure">affiliate disclosure</a>.
+      </p>
+    </aside>
+  }
+</section>

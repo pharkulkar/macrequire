@@ -1,0 +1,123 @@
+<section class="container page">
+  <a routerLink="/catalog" class="back">← All MacBooks</a>
+
+  @if (loading()) {
+    <p class="status" role="status">Loading…</p>
+  } @else if (error()) {
+    <p class="status status--error" role="alert">{{ error() }}</p>
+  } @else if (product(); as p) {
+    <header class="head">
+      <div class="head__img"><app-model-image [src]="imageOf(p)" [alt]="p.name + ' product photo'" [fallback]="p.screenSizeInch + '&quot;'" [eager]="true" /></div>
+      <div class="head__text">
+      <p class="eyebrow">{{ p.category }} · {{ p.releaseYear }}</p>
+      <h1>{{ p.name }}</h1>
+      <p class="meta">
+        @if (p.modelIdentifier) { Model identifier: {{ p.modelIdentifier }} · }
+        Specifications verified {{ p.verifiedAt | date: 'mediumDate' }} ·
+        @if (p.officialSpecUrl) { <a [href]="p.officialSpecUrl" target="_blank" rel="noopener noreferrer">Apple tech specs</a> }
+      </p>
+    </div>
+    </header>
+    <p class="intro">{{ intro() }}</p>
+
+    <div class="filters" role="group" aria-label="Filter by chip">
+      @for (c of chips(); track c) {
+        <button type="button" class="chip" [class.chip--active]="chipFilter() === c" [attr.aria-pressed]="chipFilter() === c" (click)="chipFilter.set(c); selectedId.set(null)">{{ c }}</button>
+      }
+    </div>
+
+    <div class="layout">
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">Hardware configurations for {{ p.name }}</caption>
+          <thead>
+            <tr><th scope="col">Chip</th><th scope="col">CPU / GPU</th><th scope="col">Memory</th><th scope="col">Storage</th><th scope="col">Price</th><th scope="col">Status</th></tr>
+          </thead>
+          <tbody>
+            @for (c of rows(); track c.id) {
+              <tr [class.selected]="selected()?.id === c.id" tabindex="0" (click)="selectedId.set(c.id)" (keydown.enter)="selectedId.set(c.id)" [attr.aria-selected]="selected()?.id === c.id">
+                <th scope="row">{{ c.chip.name }}</th>
+                <td>{{ c.chip.cpuCores }} / {{ c.chip.gpuCores }} core</td>
+                <td>{{ c.memoryGB }}GB</td>
+                <td>{{ c.storageLabel }}</td>
+                <td>
+                  @if (c.lowestPrice; as lp) { {{ money(lp.amount, lp.currency) }} } @else { <span class="muted">No offers yet</span> }
+                </td>
+                <td>
+                  <span class="badge" [class.badge--ok]="c.provenance.verification !== 'CTO_DERIVED'">
+                    {{ c.provenance.verification === 'CTO_DERIVED' ? 'Configure-to-order' : 'Store confirmed' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (selected(); as s) {
+        <aside class="card spec" aria-live="polite" aria-label="Selected configuration details">
+          <h2>{{ s.label }}</h2>
+          <p class="note">{{ s.provenance.verificationNote }}</p>
+          <p>
+            <button type="button" class="btn btn--secondary btn--sm" [attr.aria-pressed]="compare.has(s.id)" (click)="toggleCompare(s)">
+              {{ compare.has(s.id) ? '✓ In comparison' : 'Add to comparison' }}
+            </button>
+          </p>
+          @if (compareFull()) { <p class="note" role="alert">You can compare up to 4 configurations. Remove one first.</p> }
+          <dl>
+            <div><dt>CPU</dt><dd>{{ s.chip.cpuCores }}-core
+              @if (s.chip.superCores) { ({{ s.chip.superCores }} super{{ s.chip.performanceCores ? ', ' + s.chip.performanceCores + ' performance' : '' }}{{ s.chip.efficiencyCores ? ', ' + s.chip.efficiencyCores + ' efficiency' : '' }}) }
+            </dd></div>
+            <div><dt>GPU</dt><dd>{{ s.chip.gpuCores }}-core</dd></div>
+            <div><dt>Neural Engine</dt><dd>{{ s.chip.neuralEngineNote ?? s.chip.neuralEngineCores + '-core' }}</dd></div>
+            <div><dt>Memory bandwidth</dt><dd>{{ s.chip.memoryBandwidthGBs }}GB/s (chip maximum)</dd></div>
+            <div><dt>Memory</dt><dd>{{ s.memoryGB }}GB unified</dd></div>
+            <div><dt>Storage</dt><dd>{{ s.storageLabel }} SSD</dd></div>
+            @if (s.display; as d) {
+              <div><dt>Display</dt><dd>{{ d.technology }}, {{ d.resolution }}@if (d.refreshRateHz) {, up to {{ d.refreshRateHz }}Hz}</dd></div>
+              <div><dt>Brightness</dt><dd>{{ d.brightnessNits }} nits ({{ d.brightnessNote }})</dd></div>
+            }
+            @if (s.battery; as b) {
+              <div><dt>Battery</dt><dd>{{ b.capacityWh }}Wh, up to {{ b.videoHours }}h video, {{ b.webHours }}h web (Apple claims)</dd></div>
+            }
+            <div><dt>Weight</dt><dd>{{ s.weightKg }}kg</dd></div>
+            <div><dt>Ports</dt><dd>{{ s.ports.join(', ') }}</dd></div>
+            <div><dt>Wireless</dt><dd>{{ s.wireless }}</dd></div>
+            <div><dt>Camera</dt><dd>{{ s.camera }}</dd></div>
+            <div><dt>Audio</dt><dd>{{ s.audio }}</dd></div>
+            <div><dt>External displays</dt><dd>{{ s.externalDisplays }}</dd></div>
+            <div><dt>Finishes</dt><dd>{{ s.colors.join(', ') }}</dd></div>
+          </dl>
+          @if (s.lowestRecorded; as lr) {
+            <p class="note">Lowest price we've recorded for this configuration: <strong>{{ money(lr.amount, lr.currency) }}</strong> at {{ lr.merchant }} ({{ shortDate(lr.recordedAt) }}).</p>
+          }
+          <h3 class="offers-h">Where to buy</h3>
+          @if (s.offers.length === 0) {
+            <p class="muted">No merchant offers are listed for this configuration yet. Prices appear here once merchant data is added.</p>
+          } @else {
+            <ul class="offers">
+              @for (o of s.offers; track o.id) {
+                <li>
+                  <div>
+                    <strong>{{ o.merchant.name }}</strong>
+                    <span class="muted">
+                      @if (o.price !== null) { {{ money(o.price, o.currency) }} } @else { Price not verified }
+                      @if (o.stock === 'OUT_OF_STOCK') { · Out of stock } @else if (o.stock === 'LIMITED') { · Limited stock }
+                      @if (note(o); as n) { <br /><span class="hist" [class.hist--good]="n.kind !== 'above-low'">{{ n.text }}</span> }
+                      @if (o.priceSource === 'SAMPLE') { · Sample price (development data) } @else if (o.priceVerifiedAt) { · price checked {{ o.priceVerifiedAt | date: 'mediumDate' }} }
+                    </span>
+                  </div>
+                  @if (o.stock !== 'OUT_OF_STOCK') {
+                    <a class="btn btn--primary btn--sm" [href]="buyUrl(o.id)" target="_blank" rel="sponsored noopener noreferrer">Buy</a>
+                  }
+                </li>
+              }
+            </ul>
+            <p class="muted fine">Some links are affiliate links: we may earn a commission at no extra cost to you. Prices are reported by merchants and may change. <a routerLink="/affiliate-disclosure">Disclosure</a>.</p>
+          }
+          <app-price-history [configurationId]="s.id" [country]="market.country()" [offers]="s.offers" />
+        </aside>
+      }
+    </div>
+  }
+</section>

@@ -1,0 +1,66 @@
+<section class="container page">
+  <h1>Application Directory</h1>
+  <p class="lead">
+    These are the hardware profiles our recommendation engine uses for each application. Figures marked
+    <strong>estimate</strong> are MacRequire's own and can be tuned; a few RAM figures come straight from the vendor.
+  </p>
+
+  <div class="search">
+    <label for="dir-search" class="sr-only">Search applications</label>
+    <input id="dir-search" type="search" placeholder="Search applications, e.g. Docker, Premiere, LLM" [ngModel]="query()" (ngModelChange)="query.set($event)" />
+  </div>
+
+  <div class="filters" role="group" aria-label="Filter by category">
+    <button type="button" class="chip" [class.chip--active]="category() === 'All'" [attr.aria-pressed]="category() === 'All'" (click)="category.set('All')">All</button>
+    @for (c of categories(); track c.name) {
+      <button type="button" class="chip" [class.chip--active]="category() === c.name" [attr.aria-pressed]="category() === c.name" (click)="category.set(c.name)">
+        {{ c.name }} <span class="chip__n">{{ c.count }}</span>
+      </button>
+    }
+  </div>
+
+  <div aria-live="polite">
+    @if (loading()) {
+      <p class="status">Loading applications…</p>
+    } @else if (error()) {
+      <p class="status status--error" role="alert">We could not load applications. Please check that the API is running.</p>
+    } @else if (apps().length === 0) {
+      <p class="status">No applications match your search.</p>
+    }
+  </div>
+
+  <ul class="grid">
+    @for (a of apps(); track a.id) {
+      <li class="card app">
+        <div class="app__head">
+          <div>
+            <h2>{{ a.name }}</h2>
+            <p class="cat">{{ a.category }}</p>
+          </div>
+          @if (!a.macSupported) { <span class="badge badge--warn">Not on macOS</span> }
+          @else if (a.requirements?.needsAppleSilicon) { <span class="badge">Apple Silicon only</span> }
+        </div>
+
+        @if (a.requirements; as r) {
+          <dl class="req">
+            <div><dt>Memory</dt><dd>{{ r.minRamGB }}GB minimum, {{ r.preferredRamGB }}GB preferred</dd></div>
+            <div><dt>Storage</dt><dd>about {{ storage(r.storageGB) }}</dd></div>
+            <div><dt>CPU demand</dt><dd><span class="bar" aria-hidden="true">@for (on of bar(r.cpuDemand); track $index) { <i [class.on]="on"></i> }</span><span class="sr-only">{{ r.cpuDemand }} out of 10</span></dd></div>
+            <div><dt>GPU demand</dt><dd><span class="bar" aria-hidden="true">@for (on of bar(r.gpuDemand); track $index) { <i [class.on]="on"></i> }</span><span class="sr-only">{{ r.gpuDemand }} out of 10</span></dd></div>
+            <div><dt>Typical load</dt><dd>{{ r.intensity.charAt(0) + r.intensity.slice(1).toLowerCase() }}</dd></div>
+          </dl>
+          <p class="basis" [class.basis--vendor]="r.provenance.basis === 'VENDOR_PUBLISHED'">
+            @if (r.provenance.basis === 'VENDOR_PUBLISHED') {
+              Memory from vendor
+              @if (r.provenance.sourceUrl) { (<a [href]="r.provenance.sourceUrl" target="_blank" rel="noopener noreferrer">source</a>) }
+              ; other figures are estimates.
+            } @else { MacRequire estimate }
+          </p>
+        }
+        @if (a.notes) { <p class="notes">{{ a.notes }}</p> }
+      </li>
+    }
+  </ul>
+
+  <p class="cta"><a routerLink="/find" class="btn btn--primary">Find my MacBook</a></p>
+</section>

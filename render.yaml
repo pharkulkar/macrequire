@@ -1,0 +1,62 @@
+# Render Blueprint for MacRequire: an API service and a server-rendered website.
+# Create the PostgreSQL database in the dashboard first (same region), then see DEPLOY.md for the full steps.
+# Values marked "sync: false" are asked for when you create the Blueprint; they are never stored in this file.
+services:
+  # ------------------------------------------------------------------ API
+  - type: web
+    name: macrequire-api
+    runtime: node
+    region: virginia # keep every service and the database in the same region
+    plan: starter
+    rootDir: backend
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    preDeployCommand: npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # the database's Internal Database URL
+      - key: JWT_SECRET
+        generateValue: true
+      - key: IP_HASH_SALT
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: TRUST_PROXY_HOPS
+        value: "2" # starting point; confirm it after deploying (DEPLOY.md, step 6)
+      - key: CORS_ORIGIN
+        sync: false # the website's address, e.g. https://www.example.com
+      - key: FRONTEND_URL
+        sync: false # same as CORS_ORIGIN (first address)
+
+  # -------------------------------------------------------------- Website
+  - type: web
+    name: macrequire-web
+    runtime: node
+    region: virginia
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node dist/frontend/server/server.mjs
+    healthCheckPath: /robots.txt
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: SITE_URL
+        sync: false # the website's public address, e.g. https://www.example.com
+      - key: ALLOWED_HOSTS
+        sync: false # host names the site answers to, e.g. www.example.com,macrequire-web.onrender.com
+      - key: API_URL
+        sync: false # the API address the server calls, e.g. https://api.example.com/api
+      - key: PUBLIC_SITE_URL
+        sync: false # baked into the build: same as SITE_URL
+      - key: PUBLIC_API_URL
+        sync: false # baked into the build: the API address visitors' browsers call
+      - key: CONTACT_EMAIL
+        sync: false

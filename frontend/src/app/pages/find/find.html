@@ -1,0 +1,221 @@
+<section class="container find">
+  <nav class="progress" aria-label="Questionnaire progress">
+    <ol>
+      @for (s of steps; track s.short; let i = $index) {
+        <li [class.done]="step() > i + 1" [class.current]="step() === i + 1">
+          <button type="button" (click)="goTo(i + 1)" [attr.aria-current]="step() === i + 1 ? 'step' : null">
+            <span class="num" aria-hidden="true">{{ i + 1 }}</span>
+            <span class="lbl">{{ s.short }}</span>
+          </button>
+        </li>
+      }
+    </ol>
+  </nav>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="panel card" novalidate>
+    <p class="count">Step {{ step() }} of {{ steps.length }}</p>
+    <h1 id="step-heading" tabindex="-1">{{ steps[step() - 1].title }}</h1>
+
+    @switch (step()) {
+      <!-- 1. Usage -->
+      @case (1) {
+        <p class="hint">Choose all that apply. This shapes which hardware matters most.</p>
+        @if (useCasesError()) {
+          <p class="error" role="alert">We could not load the use cases. Please check that the API is running.</p>
+        }
+        <div class="choice-grid" role="group" aria-label="Use cases">
+          @for (u of useCases(); track u.slug) {
+            <button type="button" class="choice" [class.choice--on]="hasUseCase(u.slug)" [attr.aria-pressed]="hasUseCase(u.slug)" (click)="toggleUseCase(u.slug)">
+              <span class="choice__title">{{ u.name }}</span>
+              <span class="choice__desc">{{ u.description }}</span>
+            </button>
+          }
+        </div>
+        @if (attempted() && form.controls.useCases.invalid) {
+          <p class="error" role="alert">Choose at least one use case to continue.</p>
+        }
+      }
+
+      <!-- 2. Applications -->
+      @case (2) {
+        @if (starterNote(); as n) {
+          <p class="hint hint--starter" role="status">We selected the typical apps for {{ n }}. Remove any you do not use and add the ones you do.</p>
+        }
+        <p class="hint">
+          Search for the applications you use. We combine them into one workload, so you do not need to worry about adding up requirements.
+          You can skip this if you are unsure.
+        </p>
+        <app-app-picker inputId="current-apps" label="Search applications" [suggestedCategories]="suggestedCategories()" [selected]="value().applicationIds" (selectedChange)="form.controls.applicationIds.setValue($event)" />
+      }
+
+      <!-- 3. Intensity -->
+      @case (3) {
+        <p class="hint">How heavily do you use these applications?</p>
+        <div class="choice-grid choice-grid--2" role="radiogroup" aria-label="Workload intensity">
+          @for (o of intensityOptions; track o.value) {
+            <label class="choice" [class.choice--on]="form.controls.intensity.value === o.value">
+              <input type="radio" class="sr-only" formControlName="intensity" [value]="o.value" />
+              <span class="choice__title">{{ o.label }}</span>
+              <span class="choice__desc">{{ o.description }}</span>
+            </label>
+          }
+        </div>
+        @if (attempted() && form.controls.intensity.invalid) {
+          <p class="error" role="alert">Select how intensively you work.</p>
+        }
+      }
+
+      <!-- 4. Future -->
+      @case (4) {
+        <p class="hint">Think about the next 3 to 5 years. Tick anything you expect, or skip if nothing applies.</p>
+        <fieldset formGroupName="future" class="checks">
+          <legend class="sr-only">Expected future needs</legend>
+          @for (q of futureQuestions; track q.key) {
+            <label class="check">
+              <input type="checkbox" [formControlName]="q.key" />
+              <span><span class="check__label">{{ q.label }}</span><span class="check__hint">{{ q.hint }}</span></span>
+            </label>
+          }
+        </fieldset>
+        <div class="future-apps">
+          <h2>Applications you may adopt later</h2>
+          <app-app-picker inputId="future-apps" label="Search future applications" [exclude]="value().applicationIds" [selected]="value().future.futureApplicationIds" (selectedChange)="form.controls.future.controls.futureApplicationIds.setValue($event)" />
+        </div>
+      }
+
+      <!-- 5. Budget -->
+      @case (5) {
+        <div formGroupName="budget">
+          @if (countries.length > 1) {
+            <fieldset class="field">
+              <legend>Country and currency</legend>
+              <div class="seg" role="radiogroup">
+                @for (c of countries; track c) {
+                  <label class="seg__item" [class.seg__item--on]="country() === c">
+                    <input type="radio" class="sr-only" name="country" [checked]="country() === c" (change)="setCountry(c)" />
+                    {{ budgetConfig[c].label }}
+                  </label>
+                }
+              </div>
+            </fieldset>
+          } @else {
+            <p class="hint">Prices are in {{ currencyConfig().label }}, before tax.</p>
+          }
+
+          <div class="row">
+            <div class="field">
+              <label for="min-budget">Minimum budget ({{ currencyConfig().currency }})</label>
+              <input id="min-budget" type="number" inputmode="numeric" formControlName="min" [step]="currencyConfig().step" min="0" />
+            </div>
+            <div class="field">
+              <label for="max-budget">Maximum budget ({{ currencyConfig().currency }})</label>
+              <input id="max-budget" type="number" inputmode="numeric" formControlName="max" [step]="currencyConfig().step" min="1" [attr.aria-invalid]="budgetError ? 'true' : null" aria-describedby="budget-error" />
+            </div>
+          </div>
+
+          <div class="quick" role="group" aria-label="Quick maximum budget picks">
+            <span>Quick picks:</span>
+            @for (p of currencyConfig().quickPicks; track p) {
+              <button type="button" class="pill" (click)="setMax(p)">{{ money(p, currencyConfig().currency) }}</button>
+            }
+          </div>
+          <p id="budget-error" class="error" role="alert">{{ budgetError }}</p>
+          <p class="hint">Options a little over your maximum may appear separately as "Worth stretching your budget?", with the extra cost shown.</p>
+        </div>
+      }
+
+      <!-- 6. Preferences -->
+      @case (6) {
+        <p class="hint">All optional. Leave anything blank and we will not weigh it.</p>
+        <div formGroupName="preferences">
+          <div class="row">
+            <div class="field">
+              <label for="p-screen">Preferred screen size</label>
+              <select id="p-screen" formControlName="screenSizeInch">
+                <option [ngValue]="null">No preference</option>
+                @for (s of screenSizes; track s) { <option [ngValue]="s">About {{ s }}-inch</option> }
+              </select>
+            </div>
+            <div class="field">
+              <label for="p-years">Expected ownership</label>
+              <select id="p-years" formControlName="ownershipYears">
+                <option [ngValue]="null">No preference</option>
+                @for (y of yearOptions; track y) { <option [ngValue]="y">{{ y }} {{ y === 1 ? 'year' : 'years' }}</option> }
+              </select>
+            </div>
+            <div class="field">
+              <label for="p-ram">Memory (RAM)</label>
+              <select id="p-ram" formControlName="ramGB">
+                <option [ngValue]="null">No preference</option>
+                @for (r of ramOptions; track r) { <option [ngValue]="r">{{ r }}GB or more</option> }
+              </select>
+            </div>
+            <div class="field">
+              <label for="p-storage">Storage</label>
+              <select id="p-storage" formControlName="storageGB">
+                <option [ngValue]="null">No preference</option>
+                @for (s of storageOptions; track s) { <option [ngValue]="s">{{ storageLabel(s) }} or more</option> }
+              </select>
+            </div>
+          </div>
+          <h2>How important is each of these?</h2>
+          <div class="row">
+            @for (f of importanceFields; track f.key) {
+              <div class="field">
+                <label [for]="'p-' + f.key">{{ f.label }}</label>
+                <select [id]="'p-' + f.key" [formControlName]="f.key">
+                  <option [ngValue]="null">No preference</option>
+                  @for (l of importanceLevels; track l.value) { <option [ngValue]="l.value">{{ l.label }}</option> }
+                </select>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- 7. Review -->
+      @case (7) {
+        <dl class="review">
+          <div><dt>Use cases</dt><dd>{{ selectedUseCaseNames().join(', ') || 'None selected' }}</dd></div>
+          <div><dt>Applications</dt><dd>{{ appNames(value().applicationIds).join(', ') || 'None selected' }}</dd></div>
+          <div><dt>Workload</dt><dd>{{ intensityLabel(value().intensity) }}</dd></div>
+          <div><dt>Future needs</dt><dd>{{ futureSelected().join('; ') || 'None selected' }}</dd></div>
+          <div><dt>Future apps</dt><dd>{{ appNames(value().future.futureApplicationIds).join(', ') || 'None selected' }}</dd></div>
+          <div>
+            <dt>Budget</dt>
+            <dd>
+              @if (value().budget.max) {
+                {{ money(value().budget.min ?? 0, currencyConfig().currency) }} to {{ money(value().budget.max!, currencyConfig().currency) }}
+                ({{ currencyConfig().label }})
+              } @else { Not set }
+            </dd>
+          </div>
+          <div><dt>Preferences</dt><dd>{{ prefSummary().join('; ') || 'None set' }}</dd></div>
+        </dl>
+        <p class="hint">
+          Your answers are saved in this browser tab only. We will score every MacBook configuration against them.
+        </p>
+      }
+    }
+
+    <div class="actions">
+      @if (step() > 1) {
+        <button type="button" class="btn btn--secondary" (click)="back()">Back</button>
+      } @else { <span></span> }
+
+      <div class="actions__right">
+        @if (step() === 2 || step() === 4 || step() === preferencesStep) {
+          <button type="button" class="btn btn--text" (click)="skip()">Skip</button>
+        }
+        @if (step() < reviewStep) {
+          <button type="button" class="btn btn--primary" (click)="next()">Continue</button>
+        } @else {
+          <button type="submit" class="btn btn--primary" [disabled]="submitting()">{{ submitting() ? 'Scoring configurations…' : 'See my recommendations' }}</button>
+        }
+      </div>
+    </div>
+
+    @if (submitError()) { <p class="error" role="alert">{{ submitError() }}</p> }
+    <button type="button" class="reset" (click)="startOver()">Start over</button>
+  </form>
+</section>

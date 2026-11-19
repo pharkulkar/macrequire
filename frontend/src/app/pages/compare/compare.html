@@ -1,0 +1,91 @@
+<section class="container page">
+  <h1>Compare Configurations</h1>
+  <p class="lead">
+    Compare up to {{ max }} exact configurations side by side. The strongest value in each row is highlighted.
+    @if (scored()) { Scores reflect your questionnaire answers. }
+  </p>
+
+  @if (fellBack()) {
+    <p class="banner" role="status">Your earlier recommendation is no longer available, so only specifications are compared.</p>
+  } @else if (!scored() && basket.count() >= 2 && !loading()) {
+    <p class="banner" role="status">
+      Add a recommendation to see compatibility and future-proofing scores:
+      <a routerLink="/find">answer the questions</a> and compare from your results.
+    </p>
+  }
+
+  @if (basket.count() < 2) {
+    <div class="empty">
+      <h2>Choose at least two configurations</h2>
+      <p>
+        @if (basket.count() === 1) { You have {{ basket.count() }} selected: {{ basket.items()[0].label }}. }
+        Use the Compare button on a recommendation or on a catalog configuration.
+      </p>
+      <div class="empty__actions">
+        <a routerLink="/catalog" class="btn btn--secondary">Browse MacBooks</a>
+        <a routerLink="/find" class="btn btn--primary">Find my MacBook</a>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <p class="status" role="status">Loading comparison…</p>
+  } @else if (error()) {
+    <div class="status status--error" role="alert">
+      <p>{{ error() }}</p>
+      <button type="button" class="btn btn--primary" (click)="retry()">Try again</button>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table [style.--cols]="columns().length">
+        <caption class="sr-only">Side-by-side comparison of {{ columns().length }} MacBook configurations</caption>
+        <thead>
+          <tr>
+            <td class="corner"></td>
+            @for (c of columns(); track c.id) {
+              <th scope="col">
+                <span class="th__model">{{ c.config?.model?.name ?? c.label }}</span>
+                @if (c.config; as cfg) { <span class="th__cfg">{{ cfg.chip.name }} · {{ cfg.memoryGB }}GB · {{ cfg.storageLabel }}</span> }
+                <button type="button" class="remove" (click)="basket.remove(c.id)" [attr.aria-label]="'Remove ' + c.label + ' from comparison'">Remove</button>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.label) {
+            <tr>
+              <th scope="row">
+                {{ row.label }}
+                @if (row.hint) { <span class="hint">{{ row.hint }}</span> }
+              </th>
+              @for (c of columns(); track c.id) {
+                <td [class.best]="isBest(row, c)">
+                  @if (row.kind === 'buy') {
+                    @if (buyHref(c); as href) {
+                      <a class="btn btn--primary btn--sm" [href]="href" target="_blank" rel="sponsored noopener noreferrer">Buy from {{ buyOffer(c)?.merchant?.name }}</a>
+                    } @else { <span class="muted">No offer yet</span> }
+                  } @else { {{ row.text(c) }} }
+                  @if (isBest(row, c)) { <span class="best__mark" aria-hidden="true">★</span><span class="sr-only"> (strongest in this row)</span> }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="below">
+      @if (basket.count() < max) { <a routerLink="/catalog" class="btn btn--secondary btn--sm">Add another configuration</a> }
+      <button type="button" class="btn btn--text" (click)="basket.clear()">Clear all</button>
+    </div>
+
+    @if (comparisons().length) {
+      <section class="why card" aria-label="How these configurations differ">
+        <h2>How they differ for you</h2>
+        <ul>
+          @for (c of comparisons(); track c.higherId + c.lowerId) { <li>{{ c.summary }}</li> }
+        </ul>
+      </section>
+    }
+    <p class="notice">Some purchase links are affiliate links: we may earn a commission at no extra cost to you, and it never changes a score. <a routerLink="/affiliate-disclosure">Disclosure</a>.</p>
+    @if (notice()) { <p class="notice">{{ notice() }}</p> }
+  }
+</section>

@@ -1,0 +1,72 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  span { color: var(--text-muted); font-weight: 500; }
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+
+  a:not(.btn) {
+    color: var(--text);
+    font-size: 0.95rem;
+    &:hover, &.active { color: var(--accent); }
+  }
+}
+
+.nav__cta { padding: 0.5rem 1.1rem; font-size: 0.9rem; }
+
+.menu-btn {
+  display: none;
+  background: none;
+  border: 0;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+@media (max-width: 760px) {
+  .menu-btn { display: block; }
+
+  .nav {
+    display: none;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 1rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+
+    &--open { display: flex; }
+    a { padding: 0.75rem 0.5rem; }
+  }
+  .nav__cta { margin-top: 0.5rem; }
+}
+
+.market select { font: inherit; font-size: 0.9rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--text); cursor: pointer; }
+.market-note { margin: 0; padding: 0.5rem 1rem; text-align: center; font-size: 0.85rem; background: #fff7e8; color: #6b3d00; border-top: 1px solid #f0c98f; }
+.market-note__close { background: none; border: 0; cursor: pointer; margin-left: 0.5rem; color: inherit; font: inherit; }

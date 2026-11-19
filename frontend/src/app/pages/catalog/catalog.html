@@ -1,0 +1,44 @@
+<section class="container page">
+  <h1>MacBook Catalog</h1>
+  <p class="lead">
+    Every configuration is tracked on its own. Specifications come from Apple's official pages; each model links to the
+    source and shows when it was verified.
+  </p>
+
+  <div class="filters" role="group" aria-label="Filter by MacBook family">
+    @for (c of categories; track c) {
+      <button type="button" class="chip" [class.chip--active]="category() === c" [attr.aria-pressed]="category() === c" (click)="select(c)">
+        {{ c }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="status" role="status">Loading MacBooks…</p>
+  } @else if (error()) {
+    <p class="status status--error" role="alert">{{ error() }}</p>
+  } @else if (products().length === 0) {
+    <p class="status">No MacBooks match this filter.</p>
+  } @else {
+    <ul class="grid">
+      @for (p of products(); track p.id) {
+        <li>
+          <a class="card product" [routerLink]="['/catalog', p.slug]">
+            <div class="product__img">
+              <app-model-image [src]="p.imageUrl" [alt]="p.name + ' product photo'" [fallback]="p.screenSizeInch + '&quot;'" />
+            </div>
+            <p class="eyebrow">{{ p.category }} · {{ p.releaseYear }}</p>
+            <h2>{{ p.name }}</h2>
+            <dl class="facts">
+              <div><dt>Chips</dt><dd>{{ p.chips.join(', ') }}</dd></div>
+              <div><dt>Memory</dt><dd>{{ memory(p.memoryRangeGB) }}</dd></div>
+              <div><dt>Storage</dt><dd>{{ storage(p.storageRangeGB) }}</dd></div>
+              <div><dt>Configurations</dt><dd>{{ p.configurationCount }}</dd></div>
+            </dl>
+            <span class="product__link">View configurations →</span>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</section>

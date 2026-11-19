@@ -1,0 +1,59 @@
+<div class="picker">
+  <label class="picker__label" [for]="inputId()">{{ label() }}</label>
+  <input
+    class="picker__input"
+    type="search"
+    [id]="inputId()"
+    [ngModel]="query()"
+    (ngModelChange)="query.set($event)"
+    placeholder="Try Docker, Xcode, Figma, Ollama…"
+    autocomplete="off"
+  />
+
+  <div aria-live="polite" class="picker__live">
+    @if (searching()) {
+      <p class="muted">Searching…</p>
+    } @else if (searched() && visibleResults().length === 0) {
+      <p class="muted">No applications match "{{ query() }}".</p>
+    }
+  </div>
+
+  @if (visibleResults().length) {
+    <ul class="options" aria-label="Search results">
+      @for (a of visibleResults(); track a.id) {
+        <li>
+          <button type="button" class="option" [class.option--on]="isSelected(a.id)" [attr.aria-pressed]="isSelected(a.id)" (click)="toggle(a.id)">
+            <span class="option__name">{{ a.name }}</span>
+            <span class="option__meta">{{ a.category }}@if (!a.macSupported) { · Not available on macOS }</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (selectedItems().length) {
+    <h3 class="picker__sub">Selected ({{ selectedItems().length }})</h3>
+    <ul class="tags">
+      @for (s of selectedItems(); track s.id) {
+        <li class="tag" [class.tag--warn]="!s.macSupported">
+          {{ s.name }}@if (!s.macSupported) { <span class="tag__note"> · not on macOS</span> }
+          <button type="button" class="tag__x" (click)="remove(s.id)" [attr.aria-label]="'Remove ' + s.name">✕</button>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (visibleSuggestions().length) {
+    <h3 class="picker__sub">Suggested for your choices</h3>
+    <ul class="options options--grid">
+      @for (a of visibleSuggestions(); track a.id) {
+        <li>
+          <button type="button" class="option" [class.option--on]="isSelected(a.id)" [attr.aria-pressed]="isSelected(a.id)" (click)="toggle(a.id)">
+            <span class="option__name">{{ a.name }}</span>
+            <span class="option__meta">{{ a.category }}@if (!a.macSupported) { · Not available on macOS }</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</div>
