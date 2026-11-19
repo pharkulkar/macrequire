@@ -55,7 +55,11 @@
             "server": "src/main.server.ts",
             "outputMode": "server",
             "security": {
-              "allowedHosts": []
+              "allowedHosts": [
+                "macrequire.com",
+                "www.macrequire.com",
+                "macrequire-web.onrender.com"
+              ]
             },
             "ssr": {
               "entry": "src/server.ts"
