@@ -67,3 +67,4 @@ curl -s https://YOUR-API/api/admin/diagnostics/network -H "authorization: Bearer
 ## 8. Before announcing
 - Set up the checklist in the README ("Before launch"): contact email, lawyer review of the legal pages, search-console tokens and sitemap, affiliate IDs under Admin → Merchants.
 - Turn on database backups and uptime alerts in Render.
+ 
