@@ -31,9 +31,10 @@ non-https addresses, or without `TRUST_PROXY_HOPS`.
 The API runs `prisma migrate deploy` before each deploy and checks `/api/health`.
 
 ## 4. Load the data
-**Recommended (clean start):** in the API service → Shell:
+**Recommended (clean start):** in the API service → Shell (it opens in the repository's top folder, so go into `backend` first):
 ```
-SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_PASSWORD='a strong password, 12+ chars' NODE_ENV=production npm run db:seed
+cd backend
+SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_PASSWORD='a strong password, 12+ chars' npm run db:seed
 ```
 This loads the catalog, applications and use cases and creates your admin account (it refuses weak passwords in production).
 Then sign in at `/admin` and import prices (Admin → CSV imports), merchant link settings and product images.
