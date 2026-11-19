@@ -14,7 +14,7 @@ export function createApp() {
   app.set('trust proxy', env.TRUST_PROXY_HOPS ?? 1);
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-  const allowedOrigins = env.CORS_ORIGIN.split(',');
+  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
   // In development, pages opened from another device on the local network (http://192.168.x.x:4200) are allowed too.
   const localNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|[a-z0-9-]+\.local)(:\d+)?$/i;
   app.use(
