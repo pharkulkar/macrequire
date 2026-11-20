@@ -2,7 +2,28 @@
   <a routerLink="/catalog" class="back">← All MacBooks</a>
 
   @if (loading()) {
-    <p class="status" role="status">Loading…</p>
+    <app-skeleton-region label="Loading MacBook details">
+      <div class="head">
+        <div class="head__img"><app-skeleton height="100%" radius="16px" /></div>
+        <div class="head__text sk-lines" style="flex: 1">
+          <app-skeleton width="30%" height="0.8rem" />
+          <app-skeleton width="75%" height="2rem" />
+          <app-skeleton width="55%" height="0.85rem" />
+        </div>
+      </div>
+      <div class="sk-lines" style="margin-bottom: 1.5rem"><app-skeleton width="70%" height="0.9rem" /><app-skeleton width="60%" height="0.9rem" /></div>
+      <div class="layout">
+        <div class="table-wrap sk-pad sk-lines">
+          @for (n of skeletons; track n) { <app-skeleton height="1.6rem" /> }
+        </div>
+        <aside class="card spec sk-lines">
+          <app-skeleton width="80%" height="1.3rem" />
+          <app-skeleton width="45%" height="2.2rem" radius="999px" />
+          @for (n of skeletons; track n) { <app-skeleton height="0.9rem" /> }
+          <app-skeleton height="3rem" radius="12px" />
+        </aside>
+      </div>
+    </app-skeleton-region>
   } @else if (error()) {
     <p class="status status--error" role="alert">{{ error() }}</p>
   } @else if (product(); as p) {

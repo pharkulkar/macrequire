@@ -119,3 +119,9 @@ a {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Layout helpers for skeleton placeholders (see shared/skeleton). */
+.sk-lines { display: grid; gap: 0.65rem; }
+.sk-pad { padding: 1rem; }
+.sk-row { display: flex; gap: 1rem; align-items: center; }
+.sk-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }

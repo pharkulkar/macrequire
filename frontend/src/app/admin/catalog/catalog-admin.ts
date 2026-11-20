@@ -1,3 +1,4 @@
+import { Skeleton } from '../../shared/skeleton/skeleton';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminApi, Paged } from '../core/admin-api.service';
@@ -17,7 +18,7 @@ const numOrNull = (v: unknown): number | null => (v === '' || v === undefined ||
 
 @Component({
   selector: 'app-admin-catalog',
-  imports: [FormsModule],
+  imports: [Skeleton, FormsModule],
   styleUrl: '../admin-common.scss',
   template: `
     <h1>Catalog</h1>
@@ -89,7 +90,7 @@ const numOrNull = (v: unknown): number | null => (v === '' || v === undefined ||
                 <td><span class="badge" [class.badge--ok]="c.isActive">{{ c.isActive ? 'active' : 'hidden' }}</span></td>
                 <td class="nowrap"><button type="button" class="link" (click)="editConfig(c)">Edit</button> · <button type="button" class="link" (click)="toggleConfig(c)">{{ c.isActive ? 'Hide' : 'Show' }}</button></td>
               </tr>
-            } @empty { <tr><td colspan="6" class="empty">{{ cLoaded() ? 'No configurations match.' : 'Loading…' }}</td></tr> }
+            } @empty { @if (cLoaded()) { <tr><td colspan="6" class="empty">No configurations match.</td></tr> } @else { <tr class="sr-only"><td colspan="6" role="status">Loading…</td></tr> @for (n of skeletonRows; track n) { <tr aria-hidden="true"><td colspan="6"><app-skeleton height="1.1rem" /></td></tr> } } }
           </tbody>
         </table>
       </div>
@@ -168,6 +169,7 @@ const numOrNull = (v: unknown): number | null => (v === '' || v === undefined ||
   `,
 })
 export class AdminCatalog implements OnInit {
+  protected readonly skeletonRows = [1, 2, 3, 4, 5, 6];
   private readonly api = inject(AdminApi);
   protected readonly tab = signal<'configs' | 'models' | 'chips'>('configs');
   protected readonly msg = signal('');

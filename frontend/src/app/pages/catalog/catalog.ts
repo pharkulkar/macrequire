@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -9,7 +10,7 @@ import { Seo } from '../../core/seo.service';
 
 @Component({
   selector: 'app-catalog',
-  imports: [RouterLink, ModelImage],
+  imports: [Skeleton, SkeletonRegion, RouterLink, ModelImage],
   templateUrl: './catalog.html',
   styleUrl: './catalog.scss',
 })
@@ -20,6 +21,7 @@ export class Catalog implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly seo = inject(Seo);
 
+  protected readonly skeletons = [1, 2, 3, 4, 5, 6];
   protected readonly categories = ['All', 'MacBook Air', 'MacBook Pro'];
   protected readonly category = signal('All');
   protected readonly products = signal<ProductSummary[]>([]);

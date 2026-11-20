@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { DatePipe } from '@angular/common';
 import { Component, RESPONSE_INIT, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -14,7 +15,7 @@ import { formatMoney, formatRange, formatStorage } from '../../core/format';
 
 @Component({
   selector: 'app-product-detail',
-  imports: [RouterLink, DatePipe, ModelImage, PriceHistory],
+  imports: [Skeleton, SkeletonRegion, RouterLink, DatePipe, ModelImage, PriceHistory],
   templateUrl: './product-detail.html',
   styleUrl: './product-detail.scss',
 })
@@ -45,6 +46,7 @@ export class ProductDetailPage {
     return rows.find((c) => c.id === this.selectedId()) ?? rows[0] ?? null;
   });
 
+  protected readonly skeletons = [1, 2, 3, 4, 5, 6, 7, 8];
   protected readonly money = formatMoney;
   protected readonly note = priceNote;
   protected readonly shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

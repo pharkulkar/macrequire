@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Seo } from '../../core/seo.service';
 import { Title } from '@angular/platform-browser';
@@ -33,11 +34,13 @@ const dash = '–';
 
 @Component({
   selector: 'app-compare',
-  imports: [RouterLink],
+  imports: [Skeleton, SkeletonRegion, RouterLink],
   templateUrl: './compare.html',
   styleUrl: './compare.scss',
 })
 export class Compare {
+  protected readonly skeletons = [1, 2, 3];
+  protected readonly skeletonLines = [1, 2, 3, 4, 5, 6];
   protected readonly basket = inject(CompareService);
   private readonly api = inject(RecommendationService);
   private readonly store = inject(QuestionnaireStore);

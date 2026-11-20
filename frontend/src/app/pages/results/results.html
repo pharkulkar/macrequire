@@ -1,11 +1,27 @@
 <section class="container page">
   @if (loading()) {
-    <div class="state" role="status" aria-live="polite">
-      <div class="skeleton skeleton--title"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <p>Scoring every MacBook configuration against your answers…</p>
-    </div>
+    <app-skeleton-region label="Scoring every MacBook configuration against your answers">
+      <div class="sk-lines" style="margin-bottom: 1.5rem">
+        <app-skeleton width="min(26rem, 80%)" height="2.4rem" />
+        <app-skeleton width="min(34rem, 90%)" height="0.9rem" />
+      </div>
+      <ul class="cards cards--row" aria-hidden="true">
+        @for (n of skeletons; track n) {
+          <li>
+            <div class="card sk-pad sk-lines" style="padding: 1.5rem">
+              <div class="sk-row" style="justify-content: space-between">
+                <div class="sk-lines" style="flex: 1"><app-skeleton width="30%" height="0.7rem" /><app-skeleton width="85%" height="1.3rem" /></div>
+                <app-skeleton width="84px" height="84px" radius="50%" />
+              </div>
+              <app-skeleton height="7rem" radius="14px" />
+              <app-skeleton height="0.9rem" /><app-skeleton height="0.9rem" /><app-skeleton width="70%" height="0.9rem" />
+              <app-skeleton width="45%" height="2.4rem" radius="999px" />
+            </div>
+          </li>
+        }
+      </ul>
+    </app-skeleton-region>
+    <p class="state" style="padding: 1.5rem 1rem" aria-hidden="true">Scoring every MacBook configuration against your answers…</p>
   } @else if (error(); as e) {
     <div class="state state--error" role="alert">
       <h1>Something went wrong</h1>

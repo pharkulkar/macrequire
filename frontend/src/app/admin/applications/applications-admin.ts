@@ -1,3 +1,4 @@
+import { Skeleton } from '../../shared/skeleton/skeleton';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminApi, Paged } from '../core/admin-api.service';
@@ -19,7 +20,7 @@ const blank = (): AppForm => ({ id: null, slug: '', name: '', category: '', macS
 
 @Component({
   selector: 'app-admin-applications',
-  imports: [FormsModule],
+  imports: [Skeleton, FormsModule],
   styleUrl: '../admin-common.scss',
   template: `
     <h1>Applications &amp; use cases</h1>
@@ -86,7 +87,7 @@ const blank = (): AppForm => ({ id: null, slug: '', name: '', category: '', macS
                 <td><span class="badge" [class.badge--ok]="a.isActive">{{ a.isActive ? 'active' : 'hidden' }}</span></td>
                 <td class="nowrap"><button type="button" class="link" (click)="edit(a)">Edit</button> · <button type="button" class="link" (click)="toggle(a)">{{ a.isActive ? 'Hide' : 'Show' }}</button></td>
               </tr>
-            } @empty { <tr><td colspan="7" class="empty">{{ aLoaded() ? 'No applications match.' : 'Loading…' }}</td></tr> }
+            } @empty { @if (aLoaded()) { <tr><td colspan="7" class="empty">No applications match.</td></tr> } @else { <tr class="sr-only"><td colspan="7" role="status">Loading…</td></tr> @for (n of skeletonRows; track n) { <tr aria-hidden="true"><td colspan="7"><app-skeleton height="1.1rem" /></td></tr> } } }
           </tbody>
         </table>
       </div>
@@ -114,6 +115,7 @@ const blank = (): AppForm => ({ id: null, slug: '', name: '', category: '', macS
   `,
 })
 export class AdminApplications implements OnInit {
+  protected readonly skeletonRows = [1, 2, 3, 4, 5, 6];
   private readonly api = inject(AdminApi);
   protected readonly tab = signal<'apps' | 'uc'>('apps');
   protected readonly msg = signal('');

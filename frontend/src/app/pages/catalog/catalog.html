@@ -14,7 +14,25 @@
   </div>
 
   @if (loading()) {
-    <p class="status" role="status">Loading MacBooks…</p>
+    <app-skeleton-region label="Loading MacBooks">
+      <ul class="grid">
+        @for (n of skeletons; track n) {
+          <li>
+            <div class="card product">
+              <div class="product__img"><app-skeleton height="100%" radius="12px" /></div>
+              <div class="sk-lines">
+                <app-skeleton width="35%" height="0.7rem" />
+                <app-skeleton width="85%" height="1.3rem" />
+                <app-skeleton height="0.85rem" />
+                <app-skeleton height="0.85rem" />
+                <app-skeleton height="0.85rem" />
+                <app-skeleton width="45%" height="0.9rem" />
+              </div>
+            </div>
+          </li>
+        }
+      </ul>
+    </app-skeleton-region>
   } @else if (error()) {
     <p class="status status--error" role="alert">{{ error() }}</p>
   } @else if (products().length === 0) {

@@ -27,7 +27,17 @@
       </div>
     </div>
   } @else if (loading()) {
-    <p class="status" role="status">Loading comparison…</p>
+    <app-skeleton-region label="Loading comparison">
+      <div class="sk-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem">
+        @for (n of skeletons; track n) {
+          <div class="sk-lines">
+            <app-skeleton height="7rem" radius="14px" />
+            <app-skeleton width="80%" height="1.1rem" />
+            @for (m of skeletonLines; track m) { <app-skeleton height="0.85rem" /> }
+          </div>
+        }
+      </div>
+    </app-skeleton-region>
   } @else if (error()) {
     <div class="status status--error" role="alert">
       <p>{{ error() }}</p>

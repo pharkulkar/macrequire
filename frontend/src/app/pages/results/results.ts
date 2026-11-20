@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Seo } from '../../core/seo.service';
 import { Title } from '@angular/platform-browser';
@@ -12,7 +13,7 @@ const HIGHLIGHT_ORDER: LabelKey[] = ['BEST_OVERALL', 'BEST_VALUE', 'BEST_PERFORM
 
 @Component({
   selector: 'app-results',
-  imports: [RouterLink, ResultCard],
+  imports: [Skeleton, SkeletonRegion, RouterLink, ResultCard],
   templateUrl: './results.html',
   styleUrl: './results.scss',
 })
@@ -25,6 +26,7 @@ export class Results {
   private readonly router = inject(Router);
   private readonly title = inject(Title);
 
+  protected readonly skeletons = [1, 2, 3];
   protected readonly rec = signal<RecommendationDto | null>(null);
   protected readonly loading = signal(true);
   protected readonly active = signal(0);

@@ -1,3 +1,4 @@
+import { Skeleton } from '../../shared/skeleton/skeleton';
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -36,7 +37,7 @@ const emptyForm = (): Form => ({ id: null, modelId: '', configurationId: '', mer
 
 @Component({
   selector: 'app-admin-pricing',
-  imports: [FormsModule, DatePipe, RouterLink],
+  imports: [Skeleton, FormsModule, DatePipe, RouterLink],
   styleUrl: '../admin-common.scss',
   template: `
     <div class="spread">
@@ -116,7 +117,7 @@ const emptyForm = (): Form => ({ id: null, modelId: '', configurationId: '', mer
                 @if (o.isActive) { <button type="button" class="link" (click)="deactivate(o)">Deactivate</button> } @else { <button type="button" class="link" (click)="reactivate(o)">Reactivate</button> }
               </td>
             </tr>
-          } @empty { <tr><td colspan="7" class="empty">{{ loaded() ? 'No offers match these filters.' : 'Loading…' }}</td></tr> }
+          } @empty { @if (loaded()) { <tr><td colspan="7" class="empty">No offers match these filters.</td></tr> } @else { <tr class="sr-only"><td colspan="7" role="status">Loading…</td></tr> @for (n of skeletonRows; track n) { <tr aria-hidden="true"><td colspan="7"><app-skeleton height="1.1rem" /></td></tr> } } }
         </tbody>
       </table>
     </div>
@@ -135,6 +136,7 @@ const emptyForm = (): Form => ({ id: null, modelId: '', configurationId: '', mer
   `,
 })
 export class AdminPricing implements OnInit {
+  protected readonly skeletonRows = [1, 2, 3, 4, 5, 6];
   private readonly api = inject(AdminApi);
 
   protected readonly rows = signal<Offer[]>([]);

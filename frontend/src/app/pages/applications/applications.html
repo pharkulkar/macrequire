@@ -21,7 +21,22 @@
 
   <div aria-live="polite">
     @if (loading()) {
-      <p class="status">Loading applications…</p>
+      <app-skeleton-region label="Loading applications">
+        <ul class="grid">
+          @for (n of skeletons; track n) {
+            <li class="card app">
+              <div class="sk-lines">
+                <app-skeleton width="60%" height="1.2rem" />
+                <app-skeleton width="30%" height="0.75rem" />
+                <app-skeleton height="0.85rem" />
+                <app-skeleton height="0.85rem" />
+                <app-skeleton height="0.85rem" />
+                <app-skeleton width="40%" height="2.4rem" radius="999px" />
+              </div>
+            </li>
+          }
+        </ul>
+      </app-skeleton-region>
     } @else if (error()) {
       <p class="status status--error" role="alert">We could not load applications. Please check that the API is running.</p>
     } @else if (apps().length === 0) {

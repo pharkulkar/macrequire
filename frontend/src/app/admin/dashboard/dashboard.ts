@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -35,7 +36,7 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [RouterLink],
+  imports: [Skeleton, SkeletonRegion, RouterLink],
   styleUrl: '../admin-common.scss',
   template: `
     <div class="spread">
@@ -99,7 +100,14 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
       </form>
     </dialog>
     @if (error().length) { <div class="alert alert--error" role="alert">@for (l of error(); track l) { <div>{{ l }}</div> }</div> }
-    @if (loading()) { <p class="muted" role="status">Loading…</p> }
+    @if (loading()) {
+      <app-skeleton-region label="Loading dashboard">
+        <div class="sk-grid" style="margin-bottom: 1rem">
+          @for (n of skeletons; track n) { <div class="panel sk-lines"><app-skeleton width="45%" height="2rem" /><app-skeleton width="80%" height="0.8rem" /></div> }
+        </div>
+        <div class="panel sk-lines"><app-skeleton width="30%" height="1.1rem" /><app-skeleton height="90px" radius="10px" /></div>
+      </app-skeleton-region>
+    }
 
     @if (cov(); as c) {
       <div class="panel">
@@ -210,6 +218,7 @@ export class AdminDashboard implements OnInit {
   protected readonly allCounts = signal<{ recommendations: number; clicks: number } | null>(null);
   protected clearText = '';
   private readonly clearDialog = viewChild<ElementRef<HTMLDialogElement>>('clearDialog');
+  protected readonly skeletons = [1, 2, 3, 4];
   protected readonly days = signal(30);
   protected readonly loading = signal(true);
   protected readonly error = signal<string[]>([]);

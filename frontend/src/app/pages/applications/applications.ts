@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +10,7 @@ import { Seo } from '../../core/seo.service';
 
 @Component({
   selector: 'app-applications',
-  imports: [FormsModule, RouterLink],
+  imports: [Skeleton, SkeletonRegion, FormsModule, RouterLink],
   templateUrl: './applications.html',
   styleUrl: './applications.scss',
 })
@@ -17,6 +18,7 @@ export class Applications {
   private readonly svc = inject(ApplicationsService);
   private readonly destroyRef = inject(DestroyRef);
 
+  protected readonly skeletons = [1, 2, 3, 4, 5, 6];
   protected readonly query = signal('');
   protected readonly category = signal('All');
   protected readonly categories = signal<{ name: string; count: number }[]>([]);

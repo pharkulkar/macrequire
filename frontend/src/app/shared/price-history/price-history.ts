@@ -1,3 +1,4 @@
+import { Skeleton, SkeletonRegion } from '../skeleton/skeleton';
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { ApiService } from '../../core/api.service';
@@ -50,7 +51,7 @@ function niceTicks(min: number, max: number, count = 4): number[] {
  */
 @Component({
   selector: 'app-price-history',
-  imports: [DatePipe],
+  imports: [Skeleton, SkeletonRegion, DatePipe],
   template: `
     @if (eligible()) {
       <details class="ph" (toggle)="onToggle($event)">
@@ -67,7 +68,10 @@ function niceTicks(min: number, max: number, count = 4): number[] {
           </div>
 
           @if (loading()) {
-            <p class="ph__status" role="status">Loading price history…</p>
+            <app-skeleton-region label="Loading price history">
+              <div class="sk-row" style="gap: 1.5rem; margin-bottom: 0.6rem"><div class="sk-lines" style="width: 8rem"><app-skeleton height="0.7rem" /><app-skeleton height="1.3rem" /></div><div class="sk-lines" style="width: 8rem"><app-skeleton height="0.7rem" /><app-skeleton height="1.3rem" /></div></div>
+              <app-skeleton height="220px" radius="12px" />
+            </app-skeleton-region>
           } @else if (error()) {
             <p class="ph__status ph__status--error" role="alert">We could not load the price history. Please try again later.</p>
           } @else if (data(); as d) {
