@@ -115,6 +115,20 @@ app.get('/llms.txt', (_req, res) => {
   res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(body);
 });
 
+// ------------------------------------------------------------ scanners and bad addresses
+/**
+ * Automated scanners constantly probe for WordPress, PHP and configuration files. None exist here, so they get a quick
+ * 404 without rendering the app. Addresses that start with "//" are refused too: Angular rejects them on purpose
+ * (they can be used to make a server fetch another site), and we do not redirect them, which would be an open redirect.
+ */
+const SCANNER_PATH = /^\/+(wp-|wordpress|xmlrpc|\.env|\.git|\.aws|phpmyadmin|cgi-bin|vendor\/|server-status)|\.php\d?$/i;
+app.use((req, res, next) => {
+  if (req.path.startsWith('//') || SCANNER_PATH.test(req.path)) {
+    return void res.status(404).type('text/plain').set('Cache-Control', 'public, max-age=3600').send('Not found');
+  }
+  next();
+});
+
 // ------------------------------------------------------------------ static assets
 // Fingerprinted build files never change, so they are cached for a year. Everything else (images, icons) for a day.
 app.use(
@@ -185,5 +199,11 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
     console.log(`MacRequire web server listening on http://localhost:${port}`);
   });
 }
+
+// A page that fails to render is logged as one short line (no stack trace for every bad request) and answered plainly.
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(`render failed: ${req.method} ${req.originalUrl.slice(0, 200)} :: ${err instanceof Error ? err.message : String(err)}`);
+  if (!res.headersSent) res.status(500).type('text/plain').send('Something went wrong. Please try again.');
+});
 
 export const reqHandler = createNodeRequestHandler(app);
