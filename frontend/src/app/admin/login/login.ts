@@ -1,3 +1,4 @@
+import { errorReason } from '../../core/error-messages';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -55,7 +56,7 @@ export class AdminLogin {
       error: (e: HttpErrorResponse) => {
         this.busy.set(false);
         this.password = '';
-        this.error.set(e.status === 429 ? 'Too many attempts. Please wait a few minutes.' : e.status === 401 ? 'Invalid email or password.' : e.status === 0 ? 'Cannot reach the server.' : 'Sign in failed. Please try again.');
+        this.error.set(e.status === 429 ? 'Too many sign-in attempts. Please wait a few minutes and try again.' : e.status === 401 ? 'That email or password is not correct.' : e.status === 0 ? errorReason(e) : "We couldn't sign you in. Please try again.");
       },
     });
   }

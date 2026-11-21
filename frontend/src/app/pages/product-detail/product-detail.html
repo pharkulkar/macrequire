@@ -25,7 +25,10 @@
       </div>
     </app-skeleton-region>
   } @else if (error()) {
-    <p class="status status--error" role="alert">{{ error() }}</p>
+    <div class="status status--error" role="alert">
+      <p>{{ error() }}</p>
+      <button type="button" class="btn btn--secondary" (click)="retry()">Try again</button>
+    </div>
   } @else if (product(); as p) {
     <header class="head">
       <div class="head__img"><app-model-image [src]="imageOf(p)" [alt]="p.name + ' product photo'" [fallback]="p.screenSizeInch + '&quot;'" [eager]="true" /></div>

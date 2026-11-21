@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Component, DestroyRef, computed, inject, input, model, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -27,6 +28,7 @@ export class AppPicker {
   protected readonly suggestions = signal<ApplicationDto[]>([]);
   protected readonly searching = signal(false);
   protected readonly searched = signal(false);
+  protected readonly searchError = signal<string | null>(null);
 
   protected readonly labels = this.apps.labels;
   protected readonly selectedItems = computed(() =>
@@ -48,7 +50,13 @@ export class AppPicker {
             return of({ data: [] as ApplicationDto[] });
           }
           this.searching.set(true);
-          return this.apps.search(term, 8).pipe(catchError(() => of({ data: [] as ApplicationDto[] })));
+          this.searchError.set(null);
+          return this.apps.search(term, 8).pipe(
+            catchError((e) => {
+              this.searchError.set(failureMessage(e, 'search right now')); // a failed search is not the same as "no matches"
+              return of({ data: [] as ApplicationDto[] });
+            }),
+          );
         }),
         takeUntilDestroyed(this.destroyRef),
       )

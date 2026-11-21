@@ -38,7 +38,10 @@
         </ul>
       </app-skeleton-region>
     } @else if (error()) {
-      <p class="status status--error" role="alert">We could not load applications. Please check that the API is running.</p>
+      <div class="status status--error" role="alert">
+        <p>{{ error() }}</p>
+        <button type="button" class="btn btn--secondary" (click)="retry()">Try again</button>
+      </div>
     } @else if (apps().length === 0) {
       <p class="status">No applications match your search.</p>
     }

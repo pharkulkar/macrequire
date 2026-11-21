@@ -21,7 +21,7 @@
       @case (1) {
         <p class="hint">Choose all that apply. This shapes which hardware matters most.</p>
         @if (useCasesError()) {
-          <p class="error" role="alert">We could not load the use cases. Please check that the API is running.</p>
+          <p class="error" role="alert">{{ useCasesError() }} <button type="button" class="link" (click)="retryUseCases()">Try again</button></p>
         }
         <div class="choice-grid" role="group" aria-label="Use cases">
           @for (u of useCases(); track u.slug) {

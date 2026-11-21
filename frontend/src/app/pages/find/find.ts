@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Seo } from '../../core/seo.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -80,7 +81,14 @@ export class Find implements OnInit {
   protected readonly step = signal(1);
   protected readonly attempted = signal(false);
   protected readonly useCases = signal<UseCaseDto[]>([]);
-  protected readonly useCasesError = signal(false);
+  protected readonly useCasesError = signal<string | null>(null);
+  protected retryUseCases() {
+    this.useCasesError.set(null);
+    this.apps.useCases().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (r) => this.useCases.set(r.data),
+      error: (e) => this.useCasesError.set(failureMessage(e, 'load the use cases')),
+    });
+  }
   protected readonly submitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
 
@@ -140,7 +148,7 @@ export class Find implements OnInit {
           this.useCases.set(r.data);
           if (tileSlugs) this.applyStarterApps(tileSlugs, r.data);
         },
-        error: () => this.useCasesError.set(true),
+        error: (e) => this.useCasesError.set(failureMessage(e, 'load the use cases')),
       });
 
     const tile = this.route.snapshot.queryParamMap.get('useCase');
@@ -275,11 +283,9 @@ export class Find implements OnInit {
       error: (e: HttpErrorResponse) => {
         this.submitting.set(false);
         this.submitError.set(
-          e.status === 429
-            ? 'You have made several requests in a short time. Please wait a minute and try again.'
-            : e.status === 400
-              ? 'Some of your answers could not be used. Please review them and try again.'
-              : 'We could not generate your recommendations. Please check your connection and try again.',
+          e.status === 400
+            ? "Some of your answers couldn't be used. Please review them and try again."
+            : failureMessage(e, 'generate your recommendations'),
         );
       },
     });

@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Skeleton, SkeletonRegion } from '../skeleton/skeleton';
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
@@ -73,7 +74,7 @@ function niceTicks(min: number, max: number, count = 4): number[] {
               <app-skeleton height="220px" radius="12px" />
             </app-skeleton-region>
           } @else if (error()) {
-            <p class="ph__status ph__status--error" role="alert">We could not load the price history. Please try again later.</p>
+            <p class="ph__status ph__status--error" role="alert">{{ error() }} <button type="button" class="linklike" (click)="retry()">Try again</button></p>
           } @else if (data(); as d) {
             @if (!enoughData()) {
               <p class="ph__status">Not enough recorded price changes in this range yet to draw a chart.</p>
@@ -153,6 +154,7 @@ function niceTicks(min: number, max: number, count = 4): number[] {
     .chip--active { background: var(--text); color: #fff; border-color: var(--text); }
     .ph__status { color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0; }
     .ph__status--error { color: #b3261e; }
+    .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
     .ph__stats { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; gap: 1.5rem; flex-wrap: wrap; }
     .ph__stats li { display: grid; font-size: 0.85rem; }
     .ph__stats span { color: var(--text-muted); }
@@ -193,7 +195,11 @@ export class PriceHistory {
 
   protected readonly range = signal<Range>('90d');
   protected readonly loading = signal(false);
-  protected readonly error = signal(false);
+  protected readonly error = signal<string | null>(null);
+  protected retry() {
+    this.loadedFor = '';
+    this.load();
+  }
   protected readonly data = signal<HistoryResponse['data'] | null>(null);
   protected readonly hoverT = signal<number | null>(null);
   private loadedFor = '';
@@ -328,10 +334,10 @@ export class PriceHistory {
     const key = `${this.configurationId()}|${this.country()}|${this.range()}`;
     if (key === this.loadedFor) return;
     this.loading.set(true);
-    this.error.set(false);
+    this.error.set(null);
     this.api.get<HistoryResponse>(`/configurations/${encodeURIComponent(this.configurationId())}/price-history`, { country: this.country(), range: this.range() }).subscribe({
       next: (r) => { this.data.set(r.data); this.loadedFor = key; this.loading.set(false); },
-      error: () => { this.error.set(true); this.loading.set(false); },
+      error: (e) => { this.error.set(failureMessage(e, 'load the price history')); this.loading.set(false); },
     });
   }
 }

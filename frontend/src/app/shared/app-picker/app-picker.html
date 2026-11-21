@@ -13,6 +13,8 @@
   <div aria-live="polite" class="picker__live">
     @if (searching()) {
       <p class="muted">Searching…</p>
+    } @else if (searchError()) {
+      <p class="muted" role="alert">{{ searchError() }}</p>
     } @else if (searched() && visibleResults().length === 0) {
       <p class="muted">No applications match "{{ query() }}".</p>
     }

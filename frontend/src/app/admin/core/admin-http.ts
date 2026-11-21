@@ -1,3 +1,4 @@
+import { classifyError, errorReason } from '../../core/error-messages';
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
@@ -35,12 +36,12 @@ export const adminOnlyGuard: CanActivateFn = () => {
 
 /** Turns an API error into short lines for display, including field-level details. */
 export function errorLines(e: unknown): string[] {
-  if (!(e instanceof HttpErrorResponse)) return ['Something went wrong.'];
-  if (e.status === 0) return ['Cannot reach the server. Check that the API is running.'];
-  if (e.status === 429) return ['Too many requests. Please wait a moment and try again.'];
+  if (!(e instanceof HttpErrorResponse)) return [errorReason(e)];
+  const kind = classifyError(e);
+  if (kind === 'offline' || kind === 'unreachable' || kind === 'rate-limited' || kind === 'timeout') return [errorReason(e)];
   const err = e.error?.error as { message?: string; details?: Record<string, unknown> } | undefined;
-  if (!err) return [`Request failed (${e.status}).`];
-  const lines = [err.message ?? `Request failed (${e.status}).`];
+  if (!err) return [errorReason(e)];
+  const lines = [err.message ?? errorReason(e)];
   const d = err.details as { issues?: { path: string; message: string }[]; fieldErrors?: Record<string, string[]>; formErrors?: string[] } | undefined;
   d?.issues?.forEach((i) => lines.push(`${i.path || 'value'}: ${i.message}`));
   if (d?.fieldErrors) Object.entries(d.fieldErrors).forEach(([k, v]) => lines.push(`${k}: ${v.join(', ')}`));

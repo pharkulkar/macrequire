@@ -4,13 +4,13 @@ import { HttpError } from '../lib/errors';
 import { logger } from '../lib/logger';
 
 export function notFoundHandler(_req: Request, res: Response) {
-  res.status(404).json({ error: { message: 'Route not found' } });
+  res.status(404).json({ error: { message: 'That address does not exist.' } });
 }
 
 // Centralized error handler. Must keep the 4-argument signature.
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ZodError) {
-    return res.status(400).json({ error: { message: 'Validation failed', details: err.flatten() } });
+    return res.status(400).json({ error: { message: 'Some values are not valid. See the details below.', details: err.flatten() } });
   }
   if (err instanceof HttpError) {
     return res.status(err.status).json({ error: { message: err.message, details: err.details } });
@@ -22,5 +22,5 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return res.status(status).json({ error: { message } });
   }
   logger.error({ err }, 'Unhandled error');
-  res.status(500).json({ error: { message: 'Internal server error' } });
+  res.status(500).json({ error: { message: 'Something went wrong on our side. Please try again in a few minutes.' } });
 }

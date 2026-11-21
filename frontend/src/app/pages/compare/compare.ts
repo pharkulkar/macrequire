@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Seo } from '../../core/seo.service';
@@ -130,7 +131,7 @@ export class Compare {
           if (e?.status === 404 || e?.status === 400) {
             this.fellBack.set(true);
             this.loadSpecs(ids);
-          } else this.fail();
+          } else this.fail(e);
         },
       });
     } else {
@@ -169,12 +170,12 @@ export class Compare {
         this.notice.set(null);
         this.loading.set(false);
       },
-      error: () => this.fail(),
+      error: (e) => this.fail(e),
     });
   }
 
-  private fail() {
-    this.error.set('We could not load the comparison. Please check your connection and try again.');
+  private fail(e?: unknown) {
+    this.error.set(failureMessage(e, 'load the comparison'));
     this.loading.set(false);
   }
 

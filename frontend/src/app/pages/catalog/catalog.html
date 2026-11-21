@@ -34,7 +34,10 @@
       </ul>
     </app-skeleton-region>
   } @else if (error()) {
-    <p class="status status--error" role="alert">{{ error() }}</p>
+    <div class="status status--error" role="alert">
+      <p>{{ error() }}</p>
+      <button type="button" class="btn btn--secondary" (click)="retry()">Try again</button>
+    </div>
   } @else if (products().length === 0) {
     <p class="status">No MacBooks match this filter.</p>
   } @else {

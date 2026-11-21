@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -59,6 +60,9 @@ export class Catalog implements OnInit {
     });
   }
 
+  protected retry() {
+    this.load();
+  }
   private load() {
     this.loading.set(true);
     this.error.set(null);
@@ -69,8 +73,8 @@ export class Catalog implements OnInit {
         this.applySeo(res.data);
         this.loading.set(false);
       },
-      error: () => {
-        this.error.set('We could not load the catalog. Please check that the API is running and try again.');
+      error: (e) => {
+        this.error.set(failureMessage(e, 'load the catalog'));
         this.loading.set(false);
       },
     });

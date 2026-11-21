@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
@@ -24,7 +25,11 @@ export class Applications {
   protected readonly categories = signal<{ name: string; count: number }[]>([]);
   protected readonly apps = signal<ApplicationDto[]>([]);
   protected readonly loading = signal(true);
-  protected readonly error = signal(false);
+  protected readonly error = signal<string | null>(null);
+  private readonly reloadTick = signal(0);
+  protected retry() {
+    this.reloadTick.update((n) => n + 1);
+  }
   protected readonly storage = formatStorage;
 
   constructor() {
@@ -39,17 +44,18 @@ export class Applications {
     combineLatest([
       toObservable(this.query).pipe(debounceTime(250), distinctUntilChanged(), startWith('')),
       toObservable(this.category),
+      toObservable(this.reloadTick),
     ])
       .pipe(
         tap(() => {
           this.loading.set(true);
-          this.error.set(false);
+          this.error.set(null);
         }),
         switchMap(([q, category]) =>
           this.svc.list({ q: q.trim() || undefined, category: category === 'All' ? undefined : category, pageSize: 100 }).pipe(
             map((r) => r.data),
-            catchError(() => {
-              this.error.set(true);
+            catchError((e) => {
+              this.error.set(failureMessage(e, 'load the applications'));
               return of([] as ApplicationDto[]);
             }),
           ),

@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { DatePipe } from '@angular/common';
 import { Component, RESPONSE_INIT, computed, effect, inject, input, signal } from '@angular/core';
@@ -47,6 +48,10 @@ export class ProductDetailPage {
   });
 
   protected readonly skeletons = [1, 2, 3, 4, 5, 6, 7, 8];
+  private readonly reloadTick = signal(0);
+  protected retry() {
+    this.reloadTick.update((n) => n + 1);
+  }
   protected readonly money = formatMoney;
   protected readonly note = priceNote;
   protected readonly shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -115,6 +120,7 @@ export class ProductDetailPage {
   constructor() {
     effect(() => {
       const slug = this.id();
+      this.reloadTick(); // a new value here means "try again"
       const country = this.market.country(); // reload when the visitor's market changes
       this.loading.set(true);
       this.error.set(null);
@@ -129,7 +135,7 @@ export class ProductDetailPage {
         error: (e) => {
           if (e?.status === 404 && this.response) this.response.status = 404;
           this.seo.set({ title: e?.status === 404 ? 'MacBook not found' : 'MacBook unavailable', description: 'This MacBook page could not be shown.', path: `/catalog/${slug}`, noindex: true });
-          this.error.set(e?.status === 404 ? 'We could not find that MacBook.' : 'We could not load this MacBook. Please try again.');
+          this.error.set(e?.status === 404 ? "We couldn't find that MacBook. It may have been removed, or the link may be wrong." : failureMessage(e, 'load this MacBook'));
           this.loading.set(false);
         },
       });

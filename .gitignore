@@ -4,3 +4,4 @@ dist/
 .angular/
 *.log
 .DS_Store
+production_guide.md

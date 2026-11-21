@@ -1,3 +1,4 @@
+import { failureMessage } from '../../core/error-messages';
 import { Skeleton, SkeletonRegion } from '../../shared/skeleton/skeleton';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Seo } from '../../core/seo.service';
@@ -71,7 +72,7 @@ export class Results {
             this.store.setRecommendationId(r.id);
             this.router.navigate(['/results', r.id], { replaceUrl: true });
           },
-          error: () => this.fail(false),
+          error: (e) => this.fail(false, failureMessage(e, 'generate your recommendations')),
         });
       } else {
         this.router.navigate(['/find'], { replaceUrl: true });
@@ -91,13 +92,13 @@ export class Results {
       error: (e) => {
         if (e?.status === 404) {
           this.store.clear();
-          this.fail(false, 'We could not find that recommendation. It may have expired. Please answer the questions again.');
-        } else this.fail(true);
+          this.fail(false, "We couldn't find that recommendation. It may have expired, so please answer the questions again.");
+        } else this.fail(true, failureMessage(e, 'load your recommendations'));
       },
     });
   }
 
-  private fail(retry: boolean, message = 'We could not load your recommendations. Please check your connection and try again.') {
+  private fail(retry: boolean, message = "We couldn't load your recommendations. Please try again.") {
     this.loading.set(false);
     this.error.set({ message, retry });
   }
